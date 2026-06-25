@@ -1347,7 +1347,7 @@ function LandingPage({ navigate, events, error, loadEvents }) {
   const searchLower = searchTerm.toLowerCase();
 
   // Reset page to 1 when any filter changes
-  React.useEffect(() => {
+  useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, showPast, filterCategory, filterExperience, filterFormat]);
 
