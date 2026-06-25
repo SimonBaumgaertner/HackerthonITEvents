@@ -55,3 +55,17 @@ class EventRead(SQLModel):
     start: datetime
     end: datetime
     categories: list[str] = []
+
+
+class EventomatResponse(SQLModel, table=True):
+    __tablename__ = "eventomat_responses"
+    id: int | None = Field(default=None, primary_key=True)
+    user_token: str = Field(index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    payload: str
+
+
+class EventomatResponseCreate(SQLModel):
+    user_token: str
+    payload: dict
+
