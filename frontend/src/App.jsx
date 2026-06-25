@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { getEvents, saveEventomatResponse, getEvent } from "./api";
+import { KATEGORIEN, ERFAHRUNGSLEVEL, FORMATE } from "./enums";
 import "./App.css";
 
 
@@ -1340,7 +1341,15 @@ function LandingPage({ navigate, events, error, loadEvents }) {
   const [filterCategory, setFilterCategory] = useState("");
   const [filterExperience, setFilterExperience] = useState("");
   const [filterFormat, setFilterFormat] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 50;
+
   const searchLower = searchTerm.toLowerCase();
+
+  // Reset page to 1 when any filter changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, showPast, filterCategory, filterExperience, filterFormat]);
 
   useEffect(() => {
     if (loadEvents) {
@@ -1372,6 +1381,12 @@ function LandingPage({ navigate, events, error, loadEvents }) {
   const gridEvents = searchLower
     ? baseEvents.filter(e => e.name.toLowerCase().includes(searchLower))
     : baseEvents.slice(1);
+
+  const totalPages = Math.ceil(gridEvents.length / ITEMS_PER_PAGE);
+  const paginatedEvents = gridEvents.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   return (
     <div className="landing">
@@ -1424,9 +1439,22 @@ function LandingPage({ navigate, events, error, loadEvents }) {
       <main className="hero">
         <div className="hero-head">
           <h1>MAINFRANKEN IT-EVENTS PORTAL</h1>
-          <button className="btn btn-primary btn-lg" onClick={() => navigate("/eventomat")}>
-            Zum Eventomat (Anmeldung) ↗
-          </button>
+          <div className="hero-buttons">
+            <button 
+              className="btn btn-secondary btn-lg" 
+              onClick={() => {
+                document.getElementById('events-section')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+            >
+              Zu Events ↓
+            </button>
+            <button 
+              className="btn btn-primary btn-lg" 
+              onClick={() => navigate("/eventomat")}
+            >
+              Zum Eventomat (Anmeldung) ↗
+            </button>
+          </div>
         </div>
 
         {error && <p className="error">{error}</p>}
@@ -1436,7 +1464,7 @@ function LandingPage({ navigate, events, error, loadEvents }) {
           <MapPlaceholder count={searchLower ? gridEvents.length : baseEvents.length} />
         </section>
 
-        <div className="events-controls">
+        <div className="events-controls" id="events-section">
           <div className="search-filters">
             <div className="search-bar">
               <input 
@@ -1449,23 +1477,21 @@ function LandingPage({ navigate, events, error, loadEvents }) {
             <div className="pill-filters">
               <select className="pill-select" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
                 <option value="">Kategorie (Alle)</option>
-                <option value="Künstliche Intelligenz">Künstliche Intelligenz</option>
-                <option value="UI/UX Design und Frontend">UI/UX Design und Frontend</option>
-                <option value="Software Development">Software Development</option>
-                <option value="IT und Security">IT und Security</option>
+                {KATEGORIEN.map(kat => (
+                  <option key={kat} value={kat}>{kat}</option>
+                ))}
               </select>
               <select className="pill-select" value={filterExperience} onChange={(e) => setFilterExperience(e.target.value)}>
                 <option value="">Empfohlen für (Alle)</option>
-                <option value="Anfänger / Einsteiger">Anfänger / Einsteiger</option>
-                <option value="Fortgeschritten">Fortgeschritten</option>
-                <option value="Experte / Profi">Experte / Profi</option>
+                {ERFAHRUNGSLEVEL.map(erf => (
+                  <option key={erf} value={erf}>{erf}</option>
+                ))}
               </select>
               <select className="pill-select" value={filterFormat} onChange={(e) => setFilterFormat(e.target.value)}>
                 <option value="">Format (Alle)</option>
-                <option value="Fachvorträge & Keynotes">Fachvorträge & Keynotes</option>
-                <option value="Workshops & Hackathons">Workshops & Hackathons</option>
-                <option value="Networking & Meetups">Networking & Meetups</option>
-                <option value="Karriere & Recruiting">Karriere & Recruiting</option>
+                {FORMATE.map(fmt => (
+                  <option key={fmt} value={fmt}>{fmt}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -1486,11 +1512,35 @@ function LandingPage({ navigate, events, error, loadEvents }) {
         </div>
 
         {gridEvents.length > 0 && (
-          <section className="events-grid">
-            {gridEvents.map((event) => (
-              <EventWidget key={event.id || event.name} event={event} navigate={navigate} />
-            ))}
-          </section>
+          <>
+            <section className="events-grid">
+              {paginatedEvents.map((event) => (
+                <EventWidget key={event.id || event.name} event={event} navigate={navigate} />
+              ))}
+            </section>
+
+            {totalPages > 1 && (
+              <div className="pagination-controls">
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  ← Vorherige
+                </button>
+                <span className="pagination-info">
+                  Seite {currentPage} von {totalPages}
+                </span>
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Nächste Einträge →
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>
