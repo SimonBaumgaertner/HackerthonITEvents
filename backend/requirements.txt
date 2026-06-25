@@ -2,4 +2,9 @@ fastapi
 uvicorn[standard]
 sqlmodel
 requests
+beautifulsoup4
 python-dotenv
+# Optional: für JS-Rendering-Fallback im Scraper
+# pip install playwright && playwright install chromium
+# playwright
+

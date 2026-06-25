@@ -1,166 +1,200 @@
 #!/usr/bin/env python3
 """
-Importiert strukturierte Events aus events.json in eine SQLite-Datenbank.
+Importiert strukturierte Events aus events.json in die SQLite-Datenbank.
+
+Verwendet SQLModel — models.py ist die Source of Truth.
+Mappt die LLM-extrahierten Felder auf Event + EventKategorie.
 """
 
 import argparse
 import json
 import re
-import sqlite3
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from sqlmodel import Session, select
 
-def normalize_text(value: Any) -> str:
+from app.database import engine, init_db
+from app.models import Event, EventKategorie
+
+
+# ───────────────────────────────────────────────
+# HELPER: Feld-Mapping (LLM-Schema → models.py)
+# ───────────────────────────────────────────────
+
+def _clean(value: Any) -> str | None:
+    """Bereinigt einen Wert zu einem stripped String oder None."""
     if value is None:
-        return ""
-    return re.sub(r"\s+", " ", str(value).strip().lower())
+        return None
+    s = str(value).strip()
+    return s or None
 
 
-def build_dedupe_key(event: dict[str, Any]) -> str:
-    title = normalize_text(event.get("title"))
-    start_date = normalize_text(event.get("start_date"))
-    city = normalize_text(event.get("city"))
-    location_name = normalize_text(event.get("location_name"))
-    fallback_place = city or location_name
-    return f"{title}|{start_date}|{fallback_place}"
+def _combine_location(event: dict[str, Any]) -> str:
+    """Kombiniert location_name und city zu einem Location-String."""
+    parts: list[str] = []
+    loc = _clean(event.get("location_name"))
+    city = _clean(event.get("city"))
+    if loc:
+        parts.append(loc)
+    if city and city.lower() != (loc.lower() if loc else ""):
+        parts.append(city)
+    return ", ".join(parts) if parts else "Ort folgt"
 
 
-def ensure_schema(conn: sqlite3.Connection) -> None:
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            description TEXT,
-            start_date TEXT,
-            end_date TEXT,
-            start_time TEXT,
-            end_time TEXT,
-            location_name TEXT,
-            city TEXT,
-            organizer TEXT,
-            event_type TEXT,
-            tags_json TEXT,
-            registration_url TEXT,
-            source_url TEXT,
-            source_name TEXT,
-            is_free INTEGER,
-            format TEXT,
-            dedupe_key TEXT,
-            raw_json TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-        """
-    )
-    conn.execute(
-        """
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_events_dedupe_key
-        ON events(dedupe_key)
-        """
-    )
-    conn.commit()
+def _parse_datetime(date_str: Any, time_str: Any) -> datetime | None:
+    """Baut aus Datum (YYYY-MM-DD) und Uhrzeit (HH:MM) ein datetime-Objekt."""
+    date_val = _clean(date_str)
+    if not date_val or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date_val):
+        return None
+
+    time_val = _clean(time_str)
+    time_part = time_val if time_val and re.fullmatch(r"\d{2}:\d{2}", time_val) else "00:00"
+
+    try:
+        return datetime.fromisoformat(f"{date_val}T{time_part}:00")
+    except ValueError:
+        return None
 
 
-def load_events(json_path: Path) -> list[dict[str, Any]]:
+def _resolve_url(event: dict[str, Any]) -> str:
+    """Wählt die beste verfügbare URL (registration_url > source_url)."""
+    return _clean(event.get("registration_url")) or _clean(event.get("source_url")) or ""
+
+
+def _extract_categories(event: dict[str, Any]) -> list[str]:
+    """Extrahiert bereinigte Kategorie-Tags aus dem Event."""
+    categories: list[str] = []
+
+    tags = event.get("tags", [])
+    if isinstance(tags, list):
+        for tag in tags:
+            t = _clean(tag)
+            if t and t not in categories:
+                categories.append(t)
+
+    # Event-Typ als zusätzliche Kategorie
+    event_type = _clean(event.get("event_type"))
+    if event_type and event_type not in categories:
+        categories.append(event_type)
+
+    # Format als zusätzliche Kategorie
+    fmt = _clean(event.get("format"))
+    if fmt and fmt not in categories:
+        categories.append(fmt)
+
+    return categories
+
+
+def _dedupe_key(event: dict[str, Any]) -> str:
+    """Dedupe-Key aus Titel + Startdatum (robust, unabhängig vom Ort)."""
+    title = str(event.get("title", "")).strip().lower()
+    start_date = str(event.get("start_date", "")).strip()
+    return f"{title}|{start_date}"
+
+
+# ───────────────────────────────────────────────
+# IMPORT
+# ───────────────────────────────────────────────
+
+def import_events(
+    events: list[dict[str, Any]],
+    skip_existing: bool = True,
+) -> tuple[int, int]:
+    """
+    Importiert eine Liste von Event-Dicts in die SQLite-Datenbank.
+
+    Nutzt SQLModel (Event + EventKategorie) aus models.py.
+    Dedupliziert anhand von Titel + Datum + Ort.
+
+    Returns: (inserted, skipped)
+    """
+    init_db()
+
+    inserted = 0
+    skipped = 0
+
+    with Session(engine) as session:
+        # Bestehende Dedupe-Keys laden
+        existing_keys: set[str] = set()
+        if skip_existing:
+            for ev in session.exec(select(Event)).all():
+                date_str = ev.start.strftime("%Y-%m-%d") if ev.start else ""
+                existing_keys.add(f"{ev.name.lower()}|{date_str}")
+
+        for raw in events:
+            title = _clean(raw.get("title"))
+            if not title:
+                skipped += 1
+                continue
+
+            start = _parse_datetime(raw.get("start_date"), raw.get("start_time"))
+            if not start:
+                # models.py: start ist Pflichtfeld — ohne Datum überspringen
+                skipped += 1
+                continue
+
+            end = _parse_datetime(raw.get("end_date"), raw.get("end_time")) or start
+
+            key = _dedupe_key(raw)
+            if skip_existing and key in existing_keys:
+                skipped += 1
+                continue
+            existing_keys.add(key)
+
+            event = Event(
+                name=title,
+                location=_combine_location(raw),
+                url=_resolve_url(raw),
+                description=_clean(raw.get("description")) or "Keine Beschreibung verfügbar.",
+                start=start,
+                end=end,
+                categories=[EventKategorie(name=c) for c in _extract_categories(raw)],
+            )
+            session.add(event)
+            inserted += 1
+
+        session.commit()
+
+    return inserted, skipped
+
+
+def load_events_from_json(json_path: Path) -> list[dict[str, Any]]:
+    """Lädt Events aus einer JSON-Datei (formatiertes LLM-Output)."""
     with json_path.open(encoding="utf-8") as f:
         data = json.load(f)
 
     events = data.get("events", [])
     if not isinstance(events, list):
-        raise ValueError("events.json enthält kein gültiges events-Array")
+        raise ValueError(f"{json_path} enthält kein gültiges events-Array")
     return events
 
 
-def import_events(events: list[dict[str, Any]], db_path: Path) -> tuple[int, int]:
-    conn = sqlite3.connect(db_path)
-    try:
-        ensure_schema(conn)
-        inserted = 0
-        skipped = 0
-
-        for event in events:
-            title = str(event.get("title", "")).strip()
-            if not title:
-                skipped += 1
-                continue
-
-            dedupe_key = build_dedupe_key(event)
-            is_free = event.get("is_free")
-            if is_free is True:
-                is_free_db = 1
-            elif is_free is False:
-                is_free_db = 0
-            else:
-                is_free_db = None
-
-            cursor = conn.execute(
-                """
-                INSERT OR IGNORE INTO events (
-                    title,
-                    description,
-                    start_date,
-                    end_date,
-                    start_time,
-                    end_time,
-                    location_name,
-                    city,
-                    organizer,
-                    event_type,
-                    tags_json,
-                    registration_url,
-                    source_url,
-                    source_name,
-                    is_free,
-                    format,
-                    dedupe_key,
-                    raw_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    title,
-                    event.get("description"),
-                    event.get("start_date"),
-                    event.get("end_date"),
-                    event.get("start_time"),
-                    event.get("end_time"),
-                    event.get("location_name"),
-                    event.get("city"),
-                    event.get("organizer"),
-                    event.get("event_type"),
-                    json.dumps(event.get("tags", []), ensure_ascii=False),
-                    event.get("registration_url"),
-                    event.get("source_url"),
-                    event.get("source_name"),
-                    is_free_db,
-                    event.get("format"),
-                    dedupe_key,
-                    json.dumps(event, ensure_ascii=False),
-                ),
-            )
-
-            if cursor.rowcount == 0:
-                skipped += 1
-            else:
-                inserted += 1
-
-        conn.commit()
-        return inserted, skipped
-    finally:
-        conn.close()
-
+# ───────────────────────────────────────────────
+# CLI
+# ───────────────────────────────────────────────
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Importiere extrahierte Events in SQLite")
-    parser.add_argument("--input", default="events.json", help="Pfad zur formatierten Events-JSON")
-    parser.add_argument("--db", default="events.db", help="Pfad zur SQLite-Datenbank")
+    parser = argparse.ArgumentParser(
+        description="Importiere extrahierte Events in SQLite (SQLModel-Schema)"
+    )
+    parser.add_argument(
+        "--input",
+        default="events.json",
+        help="Pfad zur formatierten Events-JSON (Default: events.json)",
+    )
+    parser.add_argument(
+        "--no-dedupe",
+        action="store_true",
+        help="Deaktiviert Deduplizierung (alle Events werden eingefügt)",
+    )
     args = parser.parse_args()
 
-    events = load_events(Path(args.input))
-    inserted, skipped = import_events(events, Path(args.db))
+    events = load_events_from_json(Path(args.input))
+    inserted, skipped = import_events(events, skip_existing=not args.no_dedupe)
 
-    print(f"✅ SQLite-Import abgeschlossen: {inserted} eingefügt, {skipped} übersprungen")
-    print(f"📦 Datenbank: {args.db}")
+    print(f"✅ Import abgeschlossen: {inserted} eingefügt, {skipped} übersprungen")
 
 
 if __name__ == "__main__":
