@@ -1,3 +1,5 @@
 fastapi
 uvicorn[standard]
 sqlmodel
+requests
+python-dotenv
