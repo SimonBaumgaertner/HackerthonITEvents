@@ -159,9 +159,26 @@ function MapPlaceholder({ count }) {
   );
 }
 
+function EventWidget({ event }) {
+  const start = parseDate(event?.start);
+  return (
+    <article className="event-widget">
+      <div className="event-widget-date">
+        <DateBadge date={start} />
+      </div>
+      <div className="event-widget-content">
+        <h3>{event.name}</h3>
+        <p className="event-widget-location">📍 {event.location}</p>
+      </div>
+    </article>
+  );
+}
+
 function App() {
   const [events, setEvents] = useState([]);
   const [error, setError] = useState("");
+  const [showPast, setShowPast] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     getEvents()
@@ -172,7 +189,29 @@ function App() {
       .catch((err) => setError(err.message));
   }, []);
 
-  const highlight = events[0];
+  const now = new Date();
+  const searchLower = searchTerm.toLowerCase();
+
+  const baseUpcoming = events
+    .filter((e) => {
+      const d = parseDate(e.start);
+      return d && d >= now;
+    })
+    .sort((a, b) => parseDate(a.start) - parseDate(b.start));
+
+  const basePast = events
+    .filter((e) => {
+      const d = parseDate(e.start);
+      return d && d < now;
+    })
+    .sort((a, b) => parseDate(b.start) - parseDate(a.start));
+
+  const baseEvents = showPast ? basePast : baseUpcoming;
+  const highlight = baseEvents[0];
+
+  const gridEvents = searchLower
+    ? baseEvents.filter(e => e.name.toLowerCase().includes(searchLower))
+    : baseEvents.slice(1);
 
   return (
     <div className="landing">
@@ -212,25 +251,51 @@ function App() {
 
       <main className="hero">
         <div className="hero-head">
-          <div>
-            <p className="hero-eyebrow">IT-EVENTS PORTAL</p>
-            <h1>MAINFRANKEN IT-EVENTS PORTAL</h1>
-            <p className="hero-subtitle">Deine Community, deine Zukunft.</p>
-            <a className="btn btn-primary btn-lg" href="#eventomat">
-              Zum Eventomat (Anmeldung) ↗
-            </a>
-          </div>
-          <p className="hero-regions">
-            Würzburg · Schweinfurt · Aschaffenburg
-          </p>
+          <h1>MAINFRANKEN IT-EVENTS PORTAL</h1>
+          <a className="btn btn-primary btn-lg" href="#eventomat">
+            Zum Eventomat (Anmeldung) ↗
+          </a>
         </div>
 
         {error && <p className="error">{error}</p>}
 
         <section className="hero-grid">
           <HighlightCard event={highlight} />
-          <MapPlaceholder count={events.length} />
+          <MapPlaceholder count={searchLower ? gridEvents.length : baseEvents.length} />
         </section>
+
+        <div className="events-controls">
+          <div className="search-bar">
+            <input 
+              type="text" 
+              placeholder="Events durchsuchen..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="filter-toggle">
+            <button 
+              className={`btn ${!showPast ? 'btn-primary' : 'btn-ghost-dark'}`} 
+              onClick={() => setShowPast(false)}
+            >
+              Aktuell
+            </button>
+            <button 
+              className={`btn ${showPast ? 'btn-primary' : 'btn-ghost-dark'}`} 
+              onClick={() => setShowPast(true)}
+            >
+              Rückblick
+            </button>
+          </div>
+        </div>
+
+        {gridEvents.length > 0 && (
+          <section className="events-grid">
+            {gridEvents.map((event) => (
+              <EventWidget key={event.id || event.name} event={event} />
+            ))}
+          </section>
+        )}
       </main>
     </div>
   );
