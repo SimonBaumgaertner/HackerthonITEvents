@@ -17,14 +17,14 @@ DEMO_EVENTS = [
         "location": "Vogel Convention Center, Würzburg",
         "url": "https://it-mainfranken.de/forum",
         "description": (
-            "Die größte IT-Leitkonferenz der Region — Keynotes, Expo & Networking "
-            "auf höchstem Niveau. Die Leitkonferenz für die digitale Zukunft "
-            "Mainfrankens — Keynotes, Expo, Workshops und das größte IT-Networking "
-            "der Region."
+            "Die größte IT-Leitkonferenz der Region — Keynotes, Expo & Networking auf höchstem Niveau. "
+            "Das IT-FORUM MAINFRANKEN 2026 bringt Entscheider:innen, Entwickler:innen und Innovator:innen der Region zusammen. "
+            "Erwarte hochkarätige Keynotes, praxisnahe Workshops und eine Expo mit den spannendsten Tech-Anbietern Mainfrankens. "
+            "Tausche dich mit der Community aus, entdecke neue Technologien und finde Partner für deine nächsten Projekte — alles an einem Tag, an einem Ort."
         ),
         "start": datetime(2026, 10, 15, 9, 0),
         "end": datetime(2026, 10, 15, 18, 0),
-        "categories": ["Konferenz", "Networking", "Highlight"],
+        "categories": ["Networking", "Innovation", "KI"],
     },
     {
         "name": "DevOps Meetup Schweinfurt",

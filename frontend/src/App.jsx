@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { getEvents, saveEventomatResponse } from "./api";
+import { useEffect, useState, useRef } from "react";
+import { getEvents, saveEventomatResponse, getEvent } from "./api";
 import "./App.css";
+
 
 const NAV_LINKS = [
   "IT-Verband",
@@ -57,7 +58,7 @@ function DateBadge({ date }) {
   );
 }
 
-function HighlightCard({ event }) {
+function HighlightCard({ event, navigate }) {
   const start = parseDate(event?.start);
   const end = parseDate(event?.end);
 
@@ -67,7 +68,12 @@ function HighlightCard({ event }) {
         <DateBadge date={start} />
         <div className="highlight-heading">
           <span className="highlight-tag">✦ HIGHLIGHT EVENT</span>
-          <h2>{event ? event.name : "Noch keine Events"}</h2>
+          <h2 
+            style={event ? { cursor: "pointer" } : {}} 
+            onClick={() => event && navigate(`/event/${event.id}`)}
+          >
+            {event ? event.name : "Noch keine Events"}
+          </h2>
           <p className="highlight-location-eyebrow">
             {event ? event.location : "—"}
           </p>
@@ -112,17 +118,15 @@ function HighlightCard({ event }) {
       )}
 
       <div className="highlight-actions">
-        <a
+        <button
           className="btn btn-primary"
-          href={event?.url || "#"}
-          target="_blank"
-          rel="noreferrer"
+          onClick={() => event && navigate(`/event/${event.id}`)}
         >
-          Im Eventomat anmelden ↗
-        </a>
-        <a className="btn btn-ghost" href="#events">
-          Alle Events
-        </a>
+          Details anzeigen ↗
+        </button>
+        <button className="btn btn-ghost" onClick={() => navigate("/eventomat")}>
+          Zum Eventomat
+        </button>
       </div>
     </article>
   );
@@ -159,10 +163,14 @@ function MapPlaceholder({ count }) {
   );
 }
 
-function EventWidget({ event }) {
+function EventWidget({ event, navigate }) {
   const start = parseDate(event?.start);
   return (
-    <article className="event-widget">
+    <article 
+      className="event-widget" 
+      style={{ cursor: "pointer" }}
+      onClick={() => navigate(`/event/${event.id}`)}
+    >
       <div className="event-widget-date">
         <DateBadge date={start} />
       </div>
@@ -947,7 +955,17 @@ function ResultsPage({ navigate }) {
                           </div>
                         )}
 
-                        <div className="match-card-action">
+                        <div className="match-card-action" style={{ display: "flex", gap: "0.5rem" }}>
+                          <button
+                            className="btn btn-ghost"
+                            style={{ color: "var(--brand-dark)", borderColor: "var(--brand-dark)", padding: "0.5rem 1rem", fontSize: "0.85rem" }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/event/${event.id}`);
+                            }}
+                          >
+                            <span>Details</span>
+                          </button>
                           <a
                             href={event.url || "#"}
                             target="_blank"
@@ -994,6 +1012,321 @@ function ResultsPage({ navigate }) {
           <button className="btn-tertiary-link" onClick={() => navigate("/")}>
             Alle Events der Region anzeigen
           </button>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+const EVENT_COORDINATES = {
+  1: { lat: 49.7997, lng: 9.8978, venue: "Vogel Convention Center", city: "Würzburg, Mainfranken" },
+  2: { lat: 50.0463, lng: 10.2185, venue: "i-Campus", city: "Schweinfurt, Mainfranken" },
+  3: { lat: 49.9702, lng: 9.1558, venue: "TH Aschaffenburg", city: "Aschaffenburg, Mainfranken" },
+  4: { lat: 49.8016, lng: 9.9328, venue: "Posthalle Würzburg", city: "Würzburg, Mainfranken" },
+  5: { lat: 49.7997, lng: 9.8978, venue: "Vogel Convention Center", city: "Würzburg, Mainfranken" },
+  6: { lat: 49.7946, lng: 9.9602, venue: "ZDI Mainfranken", city: "Würzburg, Mainfranken" }
+};
+
+function LeafletMap({ lat, lng, popupText }) {
+  const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
+
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+
+    if (typeof window.L === "undefined") {
+      console.warn("Leaflet is not loaded on window");
+      return;
+    }
+
+    const L = window.L;
+
+    mapRef.current = L.map(mapContainerRef.current, {
+      center: [lat, lng],
+      zoom: 15,
+      zoomControl: true,
+      scrollWheelZoom: false
+    });
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: "abcd",
+      maxZoom: 20
+    }).addTo(mapRef.current);
+
+    const pinSvg = `
+      <svg width="32" height="42" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 0C7.16 0 0 7.16 0 16C0 28 16 42 16 42C16 42 32 28 32 16C32 7.16 24.84 0 16 0ZM16 22C12.68 22 10 19.32 10 16C10 12.68 12.68 10 16 10C19.32 10 22 12.68 22 16C22 19.32 19.32 22 16 22Z" fill="#84cc16" stroke="white" stroke-width="2"/>
+        <circle cx="16" cy="16" r="4" fill="white"/>
+      </svg>
+    `;
+
+    const customIcon = L.divIcon({
+      className: "custom-map-marker",
+      html: `<div style="width: 32px; height: 42px; margin-top: -42px; margin-left: -16px;">${pinSvg}</div>`,
+      iconSize: [32, 42],
+      iconAnchor: [16, 42]
+    });
+
+    L.marker([lat, lng], { icon: customIcon }).addTo(mapRef.current)
+      .bindPopup(popupText)
+      .openPopup();
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, [lat, lng, popupText]);
+
+  return <div ref={mapContainerRef} className="leaflet-map-container" style={{ width: "100%", height: "100%" }} />;
+}
+
+function EventDetailPage({ navigate, eventId }) {
+  const [event, setEvent] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setLoading(true);
+    getEvent(eventId)
+      .then((data) => {
+        setEvent(data);
+        setError("");
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
+      });
+  }, [eventId]);
+
+  const handleDownloadIcs = () => {
+    if (!event) return;
+    const startStr = new Date(event.start).toISOString().replace(/-|:|\.\d+/g, "");
+    const endStr = new Date(event.end).toISOString().replace(/-|:|\.\d+/g, "");
+    const icsContent = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//HackerthonITEvents//Event Calendar//DE",
+      "BEGIN:VEVENT",
+      `UID:event-${event.id}@it-mainfranken.de`,
+      `DTSTAMP:${new Date().toISOString().replace(/-|:|\.\d+/g, "")}`,
+      `DTSTART:${startStr}`,
+      `DTEND:${endStr}`,
+      `SUMMARY:${event.name}`,
+      `DESCRIPTION:${event.description.replace(/\n/g, "\\n")}`,
+      `LOCATION:${event.location}`,
+      `URL:${event.url}`,
+      "END:VEVENT",
+      "END:VCALENDAR"
+    ].join("\r\n");
+
+    const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${event.name.replace(/\s+/g, "_")}.ics`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  if (loading) {
+    return (
+      <div className="event-detail-loading">
+        <header className="navbar">
+          <a className="brand" href="#" onClick={(e) => { e.preventDefault(); navigate("/"); }}>
+            <span className="brand-logo">IT</span>
+            <span className="brand-text">
+              <strong>IT · MAINFRANKEN</strong>
+              <small>VERBAND E.V.</small>
+            </span>
+          </a>
+        </header>
+        <div className="event-detail-loading-inner">
+          <p>Event-Details werden geladen...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !event) {
+    return (
+      <div className="event-detail-error-page">
+        <header className="navbar">
+          <a className="brand" href="#" onClick={(e) => { e.preventDefault(); navigate("/"); }}>
+            <span className="brand-logo">IT</span>
+            <span className="brand-text">
+              <strong>IT · MAINFRANKEN</strong>
+              <small>VERBAND E.V.</small>
+            </span>
+          </a>
+        </header>
+        <div className="event-detail-error-inner">
+          <p className="error">{error || "Event nicht gefunden"}</p>
+          <button className="btn btn-primary" onClick={() => navigate("/")}>
+            Zurück zur Startseite
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const locationParts = event.location.split(",");
+  const venueName = locationParts[0]?.trim() || event.location;
+  const venueCity = locationParts[1]?.trim() || "Mainfranken";
+
+  const coords = EVENT_COORDINATES[event.id] || {
+    lat: 49.7997,
+    lng: 9.8978,
+    venue: venueName,
+    city: venueCity
+  };
+
+  const start = parseDate(event.start);
+  const end = parseDate(event.end);
+
+  const sentences = event.description.split(/(?<=\.)\s+/);
+  const leadParagraph = sentences[0] || "";
+  const bodyParagraphs = sentences.slice(1);
+
+  return (
+    <div className="event-detail-page">
+      <header className="navbar">
+        <a className="brand" href="#" onClick={(e) => { e.preventDefault(); navigate("/"); }}>
+          <span className="brand-logo">IT</span>
+          <span className="brand-text">
+            <strong>IT · MAINFRANKEN</strong>
+            <small>VERBAND E.V.</small>
+          </span>
+        </a>
+
+        <nav className="nav-links">
+          {NAV_LINKS.map((link) => (
+            <a
+              key={link}
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                if (link === "Eventomat") {
+                  navigate("/eventomat");
+                } else if (link === "IT-Events") {
+                  navigate("/");
+                } else if (link === "Beispiel-Event") {
+                  navigate("/event/1");
+                }
+              }}
+            >
+              {link}
+            </a>
+          ))}
+        </nav>
+
+        <div className="nav-actions">
+          <a className="btn btn-primary" href="#join">
+            Mitglied werden
+          </a>
+          <a className="nav-linkedin" href="#linkedin" aria-label="LinkedIn">
+            in
+          </a>
+        </div>
+      </header>
+
+      <main className="event-detail-container">
+        {event.categories && event.categories.length > 0 && (
+          <div className="event-detail-tags">
+            {event.categories.map((cat) => (
+              <span key={cat} className="event-detail-tag-badge">
+                {cat}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <h1 className="event-detail-heading">{event.name}</h1>
+
+        <div className="event-detail-metabar">
+          <div className="metabar-item">
+            <span className="metabar-icon">📅</span>
+            <span>{formatDateRange(start)}</span>
+          </div>
+          <div className="metabar-item">
+            <span className="metabar-icon">🕘</span>
+            <span>{formatTimeRange(start, end)}</span>
+          </div>
+          <div className="metabar-item">
+            <span className="metabar-icon">📍</span>
+            <span>{event.location}</span>
+          </div>
+        </div>
+
+        <div className="event-detail-grid">
+          <div className="event-detail-left-col">
+            <section className="detail-card about-card">
+              <h2 className="detail-card-eyebrow">Über das Event</h2>
+              <div className="about-card-content">
+                {leadParagraph && (
+                  <p className="about-lead">
+                    {leadParagraph}
+                  </p>
+                )}
+                {bodyParagraphs.map((para, i) => (
+                  <p key={i} className="about-paragraph">
+                    {para}
+                  </p>
+                ))}
+              </div>
+            </section>
+
+            <section className="detail-card action-hub-card">
+              <h2 className="detail-card-eyebrow">Action Hub</h2>
+              <p className="action-hub-text">
+                Sichere dir deinen Platz oder packe das Event direkt in deinen Kalender.
+              </p>
+              <div className="action-hub-buttons">
+                <button className="btn btn-calendar-ics" onClick={handleDownloadIcs}>
+                  <span className="btn-icon">📅</span>
+                  <span>In den Kalender hinzufügen (.ics)</span>
+                </button>
+                <a
+                  className="btn btn-primary btn-ticket-sichern-large"
+                  href={event.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span>Jetzt registrieren / Ticket sichern ↗</span>
+                </a>
+              </div>
+            </section>
+          </div>
+
+          <div className="event-detail-right-col">
+            <section className="detail-card location-card">
+              <div className="location-card-map-wrapper">
+                <LeafletMap
+                  lat={coords.lat}
+                  lng={coords.lng}
+                  popupText={`${event.name} @ ${venueName}`}
+                />
+              </div>
+              <div className="location-card-details">
+                <h2 className="detail-card-eyebrow">Location</h2>
+                <h3 className="location-venue-name">{venueName}</h3>
+                <p className="location-venue-city">{venueCity}, Mainfranken</p>
+                <a
+                  className="btn btn-route-planen"
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(event.location)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span className="btn-icon">✈</span>
+                  <span>Route planen</span>
+                </a>
+              </div>
+            </section>
+          </div>
         </div>
       </main>
     </div>
@@ -1086,7 +1419,7 @@ function LandingPage({ navigate, events, error }) {
         {error && <p className="error">{error}</p>}
 
         <section className="hero-grid">
-          <HighlightCard event={highlight} />
+          <HighlightCard event={highlight} navigate={navigate} />
           <MapPlaceholder count={searchLower ? gridEvents.length : baseEvents.length} />
         </section>
 
@@ -1142,7 +1475,7 @@ function LandingPage({ navigate, events, error }) {
         {gridEvents.length > 0 && (
           <section className="events-grid">
             {gridEvents.map((event) => (
-              <EventWidget key={event.id || event.name} event={event} />
+              <EventWidget key={event.id || event.name} event={event} navigate={navigate} />
             ))}
           </section>
         )}
@@ -1183,6 +1516,12 @@ function App() {
 
   if (currentPath === "/eventomat/results") {
     return <ResultsPage navigate={navigate} />;
+  }
+
+  const eventMatch = currentPath.match(/^\/event\/(\d+)/);
+  if (eventMatch) {
+    const eventId = parseInt(eventMatch[1], 10);
+    return <EventDetailPage navigate={navigate} eventId={eventId} />;
   }
 
   return <LandingPage navigate={navigate} events={events} error={error} />;

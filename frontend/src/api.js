@@ -31,3 +31,10 @@ export async function saveEventomatResponse(userToken, payload) {
   return res.json();
 }
 
+export async function getEvent(id) {
+  const res = await fetch(`${API}/events/${id}`);
+  if (!res.ok) throw new Error(`Failed to load event (${res.status})`);
+  return res.json();
+}
+
+
