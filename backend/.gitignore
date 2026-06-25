@@ -2,3 +2,7 @@
 __pycache__/
 *.db
 .env
+.DS_Store
+events_raw.json
+events.json
+

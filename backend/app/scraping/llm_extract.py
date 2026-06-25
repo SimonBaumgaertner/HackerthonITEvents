@@ -13,7 +13,7 @@ from typing import Any
 
 import requests
 
-from backend.app.Scraping.llm_client import BaseLLMClient, LLMMessage, build_default_llm_client
+from app.scraping.llm_client import BaseLLMClient, LLMMessage, build_default_llm_client
 
 MAX_CHUNK_CHARS = 60_000
 ALLOWED_EVENT_TYPES = {"workshop", "vortrag", "netzwerken", "messe", "webinar", "hackathon", "sonstiges"}

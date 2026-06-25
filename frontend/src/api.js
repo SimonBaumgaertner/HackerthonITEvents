@@ -43,4 +43,11 @@ export async function getEvent(id) {
   return res.json();
 }
 
+export async function getEventomatResults(userToken) {
+  const res = await fetch(`${API}/eventomat/results?user_token=${encodeURIComponent(userToken)}`);
+  if (!res.ok) throw new Error(`Failed to load recommendations (${res.status})`);
+  return res.json();
+}
+
+
 

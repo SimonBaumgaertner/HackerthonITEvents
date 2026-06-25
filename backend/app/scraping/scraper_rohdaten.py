@@ -11,9 +11,14 @@ import argparse
 import json
 import os
 import re
+import sys
 import time
 from datetime import datetime
+from pathlib import Path
 from urllib.parse import urljoin, urlparse, urlunparse
+
+# Ensure backend/ is on sys.path so `from app...` works when run directly
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import requests
 from bs4 import BeautifulSoup, Comment, Tag
@@ -553,10 +558,11 @@ def load_raw(filename: str = "events_raw.json") -> dict:
 def run_pipeline(
     scrape: bool = True,
     format_with_llm: bool = True,
+    import_to_db: bool = True,
     raw_file: str = "events_raw.json",
     output_file: str = "events.json",
 ) -> tuple[dict | None, dict | None]:
-    """Vollständige Pipeline: Scrapen → Rohdaten speichern → OpenRouter-Formatierung."""
+    """Vollständige Pipeline: Scrapen → LLM-Formatierung → SQLite-Import."""
     load_dotenv()
 
     raw_data = None
@@ -566,7 +572,7 @@ def run_pipeline(
         raw_data = scrape_all_raw()
         save_raw(raw_data, raw_file)
         print_summary(raw_data)
-    elif format_with_llm:
+    elif format_with_llm or import_to_db:
         if not os.path.exists(raw_file):
             raise FileNotFoundError(
                 f"{raw_file} nicht gefunden. Führe zuerst den Scraper aus oder nutze --scrape."
@@ -575,28 +581,54 @@ def run_pipeline(
         print(f"📂 Rohdaten geladen: {raw_file}")
 
     if format_with_llm:
-        from backend.app.Scraping.llm_extract import format_all_with_llm, save_formatted
+        from app.scraping.llm_extract import format_all_with_llm, save_formatted
 
         formatted_data = format_all_with_llm(raw_data)
         save_formatted(formatted_data, output_file)
+
+    if import_to_db:
+        from pathlib import Path
+
+        from app.scraping.sqlite_import import import_events, load_events_from_json
+
+        if not os.path.exists(output_file):
+            print(f"⚠️  {output_file} nicht gefunden — überspringe DB-Import.")
+        else:
+            events = load_events_from_json(Path(output_file))
+            inserted, skipped = import_events(events)
+            print(f"📦 DB-Import: {inserted} eingefügt, {skipped} übersprungen")
 
     return raw_data, formatted_data
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Mainfranken Event Scraper + OpenRouter LLM")
-    parser.add_argument("--scrape-only", action="store_true", help="Nur scrapen, keine LLM-Formatierung")
-    parser.add_argument("--llm-only", action="store_true", help="Nur LLM aus vorhandener events_raw.json")
+    parser = argparse.ArgumentParser(
+        description="Mainfranken Event Scraper + OpenRouter LLM + SQLite-Import"
+    )
+    parser.add_argument("--scrape-only", action="store_true", help="Nur scrapen, keine LLM-Formatierung / kein DB-Import")
+    parser.add_argument("--llm-only", action="store_true", help="Nur LLM aus vorhandener events_raw.json (kein Scrapen)")
+    parser.add_argument("--import-only", action="store_true", help="Nur DB-Import aus vorhandener events.json")
+    parser.add_argument("--no-import", action="store_true", help="DB-Import überspringen")
     parser.add_argument("--raw-file", default="events_raw.json", help="Pfad zur Rohdaten-JSON")
     parser.add_argument("--output", default="events.json", help="Pfad zur formatierten Events-JSON")
     args = parser.parse_args()
 
-    if args.scrape_only and args.llm_only:
-        parser.error("--scrape-only und --llm-only schließen sich aus.")
+    if sum([args.scrape_only, args.llm_only, args.import_only]) > 1:
+        parser.error("--scrape-only, --llm-only und --import-only schließen sich gegenseitig aus.")
 
-    run_pipeline(
-        scrape=not args.llm_only,
-        format_with_llm=not args.scrape_only,
-        raw_file=args.raw_file,
-        output_file=args.output,
-    )
+    if args.import_only:
+        from pathlib import Path
+
+        from app.scraping.sqlite_import import import_events, load_events_from_json
+
+        events = load_events_from_json(Path(args.output))
+        inserted, skipped = import_events(events)
+        print(f"📦 DB-Import: {inserted} eingefügt, {skipped} übersprungen")
+    else:
+        run_pipeline(
+            scrape=not args.llm_only,
+            format_with_llm=not args.scrape_only,
+            import_to_db=not args.no_import and not args.scrape_only,
+            raw_file=args.raw_file,
+            output_file=args.output,
+        )
