@@ -174,21 +174,6 @@ function EventWidget({ event }) {
   );
 }
 
-function EventWidget({ event }) {
-  const start = parseDate(event?.start);
-  return (
-    <article className="event-widget">
-      <div className="event-widget-date">
-        <DateBadge date={start} />
-      </div>
-      <div className="event-widget-content">
-        <h3>{event.name}</h3>
-        <p className="event-widget-location">📍 {event.location}</p>
-      </div>
-    </article>
-  );
-}
-
 // --- Navigation & Routing Helpers ---
 function getOrCreateUserToken() {
   let token = localStorage.getItem("eventomat_user_token");
@@ -1017,6 +1002,8 @@ function ResultsPage({ navigate }) {
 
 function LandingPage({ navigate, events, error }) {
   const now = new Date();
+  const [showPast, setShowPast] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const searchLower = searchTerm.toLowerCase();
 
   const baseUpcoming = events
