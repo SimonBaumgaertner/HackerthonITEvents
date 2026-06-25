@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { getEvents, saveEventomatResponse, getEvent } from "./api";
+import { getEvents, saveEventomatResponse, getEvent, getEventomatResults } from "./api";
 import "./App.css";
 
 
@@ -708,20 +708,13 @@ function ResultsPage({ navigate }) {
 
   useEffect(() => {
     const responses = JSON.parse(localStorage.getItem("eventomat_responses") || "{}");
-    getEvents()
+    const token = getOrCreateUserToken();
+    getEventomatResults(token)
       .then((data) => {
-        // Calculate match scores and store
-        const scoredEvents = data.map((e) => ({
-          ...e,
-          matchScore: calculateMatchScore(e, responses),
-        }));
-        // Sort descending by score
-        scoredEvents.sort((a, b) => b.matchScore - a.matchScore);
-        setEvents(scoredEvents);
-        if (scoredEvents.length > 0) {
-          // Select top event by default
-          setSelectedEventId(scoredEvents[0].id);
-          updateDirections(scoredEvents[0]);
+        setEvents(data);
+        if (data.length > 0) {
+          setSelectedEventId(data[0].id);
+          updateDirections(data[0]);
         }
         setLoading(false);
       })
@@ -937,6 +930,13 @@ function ResultsPage({ navigate }) {
                         </div>
 
                         <p className="match-card-desc">{event.description}</p>
+
+                        {event.matchingReason && (
+                          <div className="match-card-reason">
+                            <span className="reason-sparkle">✨</span>
+                            <span className="reason-text">{event.matchingReason}</span>
+                          </div>
+                        )}
 
                         <div className="match-card-meta">
                           <span className="meta-item">

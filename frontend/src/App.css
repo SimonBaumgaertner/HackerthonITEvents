@@ -510,6 +510,23 @@
   transition: transform 0.2s, box-shadow 0.2s;
   cursor: pointer;
   border: 1px solid rgba(255, 255, 255, 0.05);
+  position: relative;
+}
+
+.match-badge-pill {
+  position: absolute;
+  top: 1.2rem;
+  right: 1.2rem;
+  background-color: #f0fdf4;
+  color: #15803d;
+  font-weight: 500;
+  border-radius: 9999px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.75rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .event-widget:hover {
@@ -1185,6 +1202,29 @@
   color: #4b5563;
   line-height: 1.5;
   margin: 1rem 0;
+}
+
+.match-card-reason {
+  background-color: #f7fee7;
+  border-left: 3.5px solid var(--brand);
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #3f6212;
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  line-height: 1.4;
+}
+
+.reason-sparkle {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.reason-text {
+  font-weight: 500;
 }
 
 .match-card-meta {
