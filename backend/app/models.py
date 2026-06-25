@@ -5,6 +5,8 @@ relationship: one event has many categories. The `*Create` / `*Read` classes are
 plain (non-table) schemas used by the API.
 """
 
+from datetime import datetime
+
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -22,6 +24,8 @@ class Event(SQLModel, table=True):
     location: str
     url: str
     description: str
+    start: datetime
+    end: datetime
 
     categories: list[EventKategorie] = Relationship(
         back_populates="event",
@@ -37,6 +41,8 @@ class EventCreate(SQLModel):
     location: str
     url: str
     description: str
+    start: datetime
+    end: datetime
     categories: list[str] = []
 
 
@@ -46,4 +52,6 @@ class EventRead(SQLModel):
     location: str
     url: str
     description: str
+    start: datetime
+    end: datetime
     categories: list[str] = []

@@ -6,13 +6,17 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 
-from .database import get_session, init_db
+from .database import get_session
 from .models import Event, EventCreate, EventKategorie, EventRead
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
+    # Create tables and insert the demo data if the database is empty.
+    # `seed()` calls `init_db()` and skips when events already exist.
+    from seed import seed
+
+    seed()
     yield
 
 
@@ -34,6 +38,8 @@ def to_read(event: Event) -> EventRead:
         location=event.location,
         url=event.url,
         description=event.description,
+        start=event.start,
+        end=event.end,
         categories=[c.name for c in event.categories],
     )
 
@@ -51,6 +57,8 @@ def create_event(payload: EventCreate, session: Session = Depends(get_session)):
         location=payload.location,
         url=payload.url,
         description=payload.description,
+        start=payload.start,
+        end=payload.end,
         categories=[EventKategorie(name=name) for name in payload.categories],
     )
     session.add(event)
