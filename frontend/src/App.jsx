@@ -165,12 +165,20 @@ function MapPlaceholder({ count }) {
 
 function EventWidget({ event, navigate }) {
   const start = parseDate(event?.start);
+  const token = getCookie("eventomat_user_token") || localStorage.getItem("eventomat_user_token");
+  const hasMatchScore = typeof event?.matchScore !== "undefined" && event?.matchScore !== null;
+
   return (
     <article 
       className="event-widget" 
       style={{ cursor: "pointer" }}
       onClick={() => navigate(`/event/${event.id}`)}
     >
+      {token && hasMatchScore && (
+        <span className="match-badge-pill">
+          {event.matchScore}% Match
+        </span>
+      )}
       <div className="event-widget-date">
         <DateBadge date={start} />
       </div>
@@ -183,11 +191,33 @@ function EventWidget({ event, navigate }) {
 }
 
 // --- Navigation & Routing Helpers ---
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
+}
+
+function setCookie(name, value, days = 365) {
+  const date = new Date();
+  date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+  const expires = "; expires=" + date.toUTCString();
+  document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Lax";
+}
+
 function getOrCreateUserToken() {
-  let token = localStorage.getItem("eventomat_user_token");
+  let token = getCookie("eventomat_user_token") || localStorage.getItem("eventomat_user_token");
   if (!token) {
     token = "user_" + Math.random().toString(36).substring(2, 11);
     localStorage.setItem("eventomat_user_token", token);
+    setCookie("eventomat_user_token", token);
+  } else {
+    if (!getCookie("eventomat_user_token")) {
+      setCookie("eventomat_user_token", token);
+    }
+    if (!localStorage.getItem("eventomat_user_token")) {
+      localStorage.setItem("eventomat_user_token", token);
+    }
   }
   return token;
 }
@@ -651,7 +681,7 @@ function OnboardingPage({ navigate }) {
                   className="eventomat-textarea"
                   value={responses.freitext}
                   onChange={handleTextChange}
-                  placeholder="z.B. Hochschule/Unternehmen, Wünsche an das Catering, Barrierefreiheit..."
+                  placeholder="Welche Veranstaltung hat dir gefallen? Was möchtest du uns noch mitteilen?"
                   maxLength={1000}
                 ></textarea>
                 <div className="eventomat-char-count">{responses.freitext.length} / 1000</div>
@@ -1090,9 +1120,19 @@ function EventDetailPage({ navigate, eventId }) {
 
   useEffect(() => {
     setLoading(true);
-    getEvent(eventId)
-      .then((data) => {
-        setEvent(data);
+    const token = getCookie("eventomat_user_token") || localStorage.getItem("eventomat_user_token");
+    
+    Promise.all([
+      getEvent(eventId),
+      token ? getEventomatResults(token).catch(() => []) : Promise.resolve([])
+    ])
+      .then(([eventData, resultsData]) => {
+        const matchInfo = resultsData.find(r => r.id === eventId);
+        if (matchInfo) {
+          eventData.matchScore = matchInfo.matchScore;
+          eventData.matchingReason = matchInfo.matchingReason;
+        }
+        setEvent(eventData);
         setError("");
         setLoading(false);
       })
@@ -1246,6 +1286,15 @@ function EventDetailPage({ navigate, eventId }) {
         )}
 
         <h1 className="event-detail-heading">{event.name}</h1>
+
+        {event.matchingReason && (
+          <div className="event-detail-ai-context">
+            <span className="ai-icon">✨</span>
+            <span className="ai-text">
+              Basierend auf deinen Interessen: {event.matchingReason}
+            </span>
+          </div>
+        )}
 
         <div className="event-detail-metabar">
           <div className="metabar-item">
@@ -1503,12 +1552,72 @@ function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
   const loadEvents = useCallback((filters = {}) => {
-    getEvents(filters)
-      .then((data) => {
-        setEvents(data);
-        setError("");
-      })
-      .catch((err) => setError(err.message));
+    const token = getCookie("eventomat_user_token") || localStorage.getItem("eventomat_user_token");
+    if (token) {
+      getEventomatResults(token)
+        .then((data) => {
+          let filtered = data;
+          
+          if (filters.category) {
+            const catLower = filters.category.toLowerCase();
+            let terms = [];
+            if (catLower.includes("künstliche")) terms = ["ki", "data", "machine learning", "künstliche intelligenz"];
+            else if (catLower.includes("ui/ux")) terms = ["ui", "ux", "design", "frontend", "web", "accessibility"];
+            else if (catLower.includes("software")) terms = ["software", "devops", "code", "cloud", "python", "react"];
+            else if (catLower.includes("security")) terms = ["security", "hardware", "infrastruktur", "ransomware", "kmu"];
+            else if (catLower.includes("networking")) terms = ["networking", "network", "netzwerk"];
+            
+            filtered = filtered.filter(e => {
+              const name = (e.name || "").toLowerCase();
+              const desc = (e.description || "").toLowerCase();
+              const cats = (e.categories || []).map(c => c.toLowerCase());
+              return terms.some(t => name.includes(t) || desc.includes(t) || cats.some(c => c.includes(t)));
+            });
+          }
+
+          if (filters.experience) {
+            const expLower = filters.experience.toLowerCase();
+            let terms = [];
+            if (expLower.includes("anfänger")) terms = ["anfänger", "einsteiger", "studierende", "grundlagen", "basis"];
+            else if (expLower.includes("fortgeschritten")) terms = ["fortgeschritten", "praxis", "solide"];
+            else if (expLower.includes("experte")) terms = ["experte", "profi", "intensiv", "täglich"];
+            
+            filtered = filtered.filter(e => {
+              const name = (e.name || "").toLowerCase();
+              const desc = (e.description || "").toLowerCase();
+              const cats = (e.categories || []).map(c => c.toLowerCase());
+              return terms.some(t => name.includes(t) || desc.includes(t) || cats.some(c => c.includes(t)));
+            });
+          }
+
+          if (filters.format) {
+            const fmtLower = filters.format.toLowerCase();
+            let terms = [];
+            if (fmtLower.includes("fachvorträge")) terms = ["vortrag", "vorträge", "keynote", "konferenz", "talk", "forum", "summit"];
+            else if (fmtLower.includes("workshops")) terms = ["workshop", "hackathon", "hands-on", "projekt"];
+            else if (fmtLower.includes("networking")) terms = ["meetup", "networking", "community", "treffen"];
+            else if (fmtLower.includes("karriere")) terms = ["karriere", "recruiting", "job"];
+            
+            filtered = filtered.filter(e => {
+              const name = (e.name || "").toLowerCase();
+              const desc = (e.description || "").toLowerCase();
+              const cats = (e.categories || []).map(c => c.toLowerCase());
+              return terms.some(t => name.includes(t) || desc.includes(t) || cats.some(c => c.includes(t)));
+            });
+          }
+
+          setEvents(filtered);
+          setError("");
+        })
+        .catch((err) => setError(err.message));
+    } else {
+      getEvents(filters)
+        .then((data) => {
+          setEvents(data);
+          setError("");
+        })
+        .catch((err) => setError(err.message));
+    }
   }, []);
 
   useEffect(() => {
