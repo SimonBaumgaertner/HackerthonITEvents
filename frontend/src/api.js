@@ -1,7 +1,13 @@
 const API = "http://localhost:8000";
 
-export async function getEvents() {
-  const res = await fetch(`${API}/events`);
+export async function getEvents(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.category) params.append("category", filters.category);
+  if (filters.experience) params.append("experience", filters.experience);
+  if (filters.format) params.append("format", filters.format);
+
+  const url = `${API}/events${params.toString() ? `?${params.toString()}` : ""}`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to load events (${res.status})`);
   return res.json();
 }

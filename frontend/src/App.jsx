@@ -1333,11 +1333,24 @@ function EventDetailPage({ navigate, eventId }) {
   );
 }
 
-function LandingPage({ navigate, events, error }) {
+function LandingPage({ navigate, events, error, loadEvents }) {
   const now = new Date();
   const [showPast, setShowPast] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
+  const [filterExperience, setFilterExperience] = useState("");
+  const [filterFormat, setFilterFormat] = useState("");
   const searchLower = searchTerm.toLowerCase();
+
+  React.useEffect(() => {
+    if (loadEvents) {
+      loadEvents({
+        category: filterCategory,
+        experience: filterExperience,
+        format: filterFormat
+      });
+    }
+  }, [filterCategory, filterExperience, filterFormat, loadEvents]);
 
   const baseUpcoming = events
     .filter((e) => {
@@ -1434,21 +1447,21 @@ function LandingPage({ navigate, events, error }) {
               />
             </div>
             <div className="pill-filters">
-              <select className="pill-select" defaultValue="">
-                <option value="" disabled>Kategorie</option>
+              <select className="pill-select" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+                <option value="">Kategorie (Alle)</option>
                 <option value="Künstliche Intelligenz">Künstliche Intelligenz</option>
                 <option value="UI/UX Design und Frontend">UI/UX Design und Frontend</option>
                 <option value="Software Development">Software Development</option>
                 <option value="IT und Security">IT und Security</option>
               </select>
-              <select className="pill-select" defaultValue="">
-                <option value="" disabled>Empfohlen für</option>
+              <select className="pill-select" value={filterExperience} onChange={(e) => setFilterExperience(e.target.value)}>
+                <option value="">Empfohlen für (Alle)</option>
                 <option value="Anfänger / Einsteiger">Anfänger / Einsteiger</option>
                 <option value="Fortgeschritten">Fortgeschritten</option>
                 <option value="Experte / Profi">Experte / Profi</option>
               </select>
-              <select className="pill-select" defaultValue="">
-                <option value="" disabled>Format</option>
+              <select className="pill-select" value={filterFormat} onChange={(e) => setFilterFormat(e.target.value)}>
+                <option value="">Format (Alle)</option>
                 <option value="Fachvorträge & Keynotes">Fachvorträge & Keynotes</option>
                 <option value="Workshops & Hackathons">Workshops & Hackathons</option>
                 <option value="Networking & Meetups">Networking & Meetups</option>
@@ -1489,20 +1502,24 @@ function App() {
   const [error, setError] = useState("");
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
-  useEffect(() => {
-    getEvents()
+  const loadEvents = React.useCallback((filters = {}) => {
+    getEvents(filters)
       .then((data) => {
         setEvents(data);
         setError("");
       })
       .catch((err) => setError(err.message));
+  }, []);
+
+  useEffect(() => {
+    loadEvents();
 
     const handleLocationChange = () => {
       setCurrentPath(window.location.pathname);
     };
     window.addEventListener("popstate", handleLocationChange);
     return () => window.removeEventListener("popstate", handleLocationChange);
-  }, []);
+  }, [loadEvents]);
 
   const navigate = (path) => {
     window.history.pushState({}, "", path);
@@ -1524,8 +1541,7 @@ function App() {
     return <EventDetailPage navigate={navigate} eventId={eventId} />;
   }
 
-  return <LandingPage navigate={navigate} events={events} error={error} />;
+  return <LandingPage navigate={navigate} events={events} error={error} loadEvents={loadEvents} />;
 }
 
 export default App;
-

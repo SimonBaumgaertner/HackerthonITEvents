@@ -45,9 +45,78 @@ def to_read(event: Event) -> EventRead:
     )
 
 
+from sqlalchemy import or_
+
 @app.get("/events", response_model=list[EventRead])
-def list_events(session: Session = Depends(get_session)):
-    events = session.exec(select(Event)).all()
+def list_events(
+    category: str | None = None,
+    experience: str | None = None,
+    format: str | None = None,
+    session: Session = Depends(get_session)
+):
+    query = select(Event)
+
+    if category:
+        cat_lower = category.lower()
+        search_terms = []
+        if "künstliche" in cat_lower:
+            search_terms = ["ki", "data", "machine learning", "künstliche intelligenz"]
+        elif "ui/ux" in cat_lower:
+            search_terms = ["ui", "ux", "design", "frontend", "web", "accessibility"]
+        elif "software" in cat_lower:
+            search_terms = ["software", "devops", "code", "cloud", "python", "react"]
+        elif "security" in cat_lower:
+            search_terms = ["security", "hardware", "infrastruktur", "ransomware", "kmu"]
+        elif "networking" in cat_lower:
+            search_terms = ["networking", "network", "netzwerk"]
+            
+        if search_terms:
+            conditions = []
+            for term in search_terms:
+                conditions.append(Event.name.icontains(term))
+                conditions.append(Event.description.icontains(term))
+                conditions.append(Event.categories.any(EventKategorie.name.icontains(term)))
+            query = query.where(or_(*conditions))
+
+    if experience:
+        exp_lower = experience.lower()
+        search_terms = []
+        if "anfänger" in exp_lower:
+            search_terms = ["anfänger", "einsteiger", "studierende", "grundlagen", "basis"]
+        elif "fortgeschritten" in exp_lower:
+            search_terms = ["fortgeschritten", "praxis", "solide"]
+        elif "experte" in exp_lower:
+            search_terms = ["experte", "profi", "intensiv", "täglich"]
+        
+        if search_terms:
+            conditions = []
+            for term in search_terms:
+                conditions.append(Event.description.icontains(term))
+                conditions.append(Event.name.icontains(term))
+                conditions.append(Event.categories.any(EventKategorie.name.icontains(term)))
+            query = query.where(or_(*conditions))
+
+    if format:
+        fmt_lower = format.lower()
+        search_terms = []
+        if "fachvorträge" in fmt_lower:
+            search_terms = ["vortrag", "vorträge", "keynote", "konferenz", "talk", "forum", "summit"]
+        elif "workshops" in fmt_lower:
+            search_terms = ["workshop", "hackathon", "hands-on", "projekt"]
+        elif "networking" in fmt_lower:
+            search_terms = ["meetup", "networking", "community", "treffen"]
+        elif "karriere" in fmt_lower:
+            search_terms = ["karriere", "recruiting", "job"]
+            
+        if search_terms:
+            conditions = []
+            for term in search_terms:
+                conditions.append(Event.description.icontains(term))
+                conditions.append(Event.name.icontains(term))
+                conditions.append(Event.categories.any(EventKategorie.name.icontains(term)))
+            query = query.where(or_(*conditions))
+
+    events = session.exec(query).unique().all()
     return [to_read(e) for e in events]
 
 
