@@ -3,3 +3,4 @@ uvicorn[standard]
 sqlmodel
 requests
 python-dotenv
+httpx
