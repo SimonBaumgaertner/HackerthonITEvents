@@ -30,7 +30,7 @@ DEMO_EVENTS = [
         "name": "DevOps Meetup Schweinfurt",
         "location": "i-Campus, Schweinfurt",
         "url": "https://it-mainfranken.de/devops-meetup",
-        "description": "Hands-on Vorträge rund um CI/CD, Container und Cloud Native.",
+        "description": "Erfahre praxisnahe Einblicke in Kubernetes, Docker und CI/CD Pipelines. Das DevOps Meetup in Schweinfurt bietet spannende Tech-Talks von Experten und reichlich Gelegenheit, sich bei Pizza und Kaltgetränken mit anderen Cloud-Native-Enthusiasten auszutauschen.",
         "start": datetime(2026, 9, 24, 18, 30),
         "end": datetime(2026, 9, 24, 21, 0),
         "categories": ["DevOps", "Meetup", "Cloud"],

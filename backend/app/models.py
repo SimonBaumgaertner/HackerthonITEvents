@@ -63,6 +63,8 @@ class EventomatResponse(SQLModel, table=True):
     user_token: str = Field(index=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     payload: str
+    results: str | None = Field(default=None)
+
 
 
 class EventomatResponseCreate(SQLModel):
