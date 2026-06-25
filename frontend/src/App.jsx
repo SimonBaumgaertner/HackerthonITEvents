@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { getEvents, saveEventomatResponse, getEvent } from "./api";
 import "./App.css";
 
@@ -1342,7 +1342,7 @@ function LandingPage({ navigate, events, error, loadEvents }) {
   const [filterFormat, setFilterFormat] = useState("");
   const searchLower = searchTerm.toLowerCase();
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (loadEvents) {
       loadEvents({
         category: filterCategory,
@@ -1502,7 +1502,7 @@ function App() {
   const [error, setError] = useState("");
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
-  const loadEvents = React.useCallback((filters = {}) => {
+  const loadEvents = useCallback((filters = {}) => {
     getEvents(filters)
       .then((data) => {
         setEvents(data);
