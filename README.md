@@ -1,3 +1,6 @@
+Link zu Lovable:
+https://lovable.dev/projects/b16d71fb-65b7-4446-8043-1bec85ef0be1?magic_link=mc_6f381dd5-701e-436f-8c93-1d1387b33df4
+
 # HackerthonITEvents
 
 A small app to collect and display IT events. FastAPI + SQLModel + SQLite backend, React (Vite) frontend.
