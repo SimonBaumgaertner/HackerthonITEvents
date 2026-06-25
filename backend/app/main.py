@@ -7,7 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 
 from .database import get_session
-from .models import Event, EventCreate, EventKategorie, EventRead
+import json
+from .models import Event, EventCreate, EventKategorie, EventRead, EventomatResponse, EventomatResponseCreate
 
 
 @asynccontextmanager
@@ -82,3 +83,20 @@ def delete_event(event_id: int, session: Session = Depends(get_session)):
         raise HTTPException(status_code=404, detail="Event not found")
     session.delete(event)
     session.commit()
+
+
+@app.post("/eventomat/responses", status_code=201)
+def create_response(payload: EventomatResponseCreate, session: Session = Depends(get_session)):
+    response = EventomatResponse(
+        user_token=payload.user_token,
+        payload=json.dumps(payload.payload),
+    )
+    session.add(response)
+    session.commit()
+    session.refresh(response)
+    return {
+        "id": response.id,
+        "user_token": response.user_token,
+        "created_at": response.created_at,
+    }
+
