@@ -1091,23 +1091,47 @@ function LandingPage({ navigate, events, error }) {
         </section>
 
         <div className="events-controls">
-          <div className="search-bar">
-            <input
-              type="text"
-              placeholder="Events durchsuchen..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className="search-filters">
+            <div className="search-bar">
+              <input 
+                type="text" 
+                placeholder="Events durchsuchen..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="pill-filters">
+              <select className="pill-select" defaultValue="">
+                <option value="" disabled>Kategorie</option>
+                <option value="Künstliche Intelligenz">Künstliche Intelligenz</option>
+                <option value="UI/UX Design und Frontend">UI/UX Design und Frontend</option>
+                <option value="Software Development">Software Development</option>
+                <option value="IT und Security">IT und Security</option>
+              </select>
+              <select className="pill-select" defaultValue="">
+                <option value="" disabled>Empfohlen für</option>
+                <option value="Anfänger / Einsteiger">Anfänger / Einsteiger</option>
+                <option value="Fortgeschritten">Fortgeschritten</option>
+                <option value="Experte / Profi">Experte / Profi</option>
+              </select>
+              <select className="pill-select" defaultValue="">
+                <option value="" disabled>Format</option>
+                <option value="Fachvorträge & Keynotes">Fachvorträge & Keynotes</option>
+                <option value="Workshops & Hackathons">Workshops & Hackathons</option>
+                <option value="Networking & Meetups">Networking & Meetups</option>
+                <option value="Karriere & Recruiting">Karriere & Recruiting</option>
+              </select>
+            </div>
           </div>
           <div className="filter-toggle">
-            <button
-              className={`btn ${!showPast ? 'btn-primary' : 'btn-ghost-dark'}`}
+            <button 
+              className={`btn ${!showPast ? 'btn-primary' : 'btn-ghost-dark'}`} 
               onClick={() => setShowPast(false)}
             >
               Aktuell
             </button>
-            <button
-              className={`btn ${showPast ? 'btn-primary' : 'btn-ghost-dark'}`}
+            <button 
+              className={`btn ${showPast ? 'btn-primary' : 'btn-ghost-dark'}`} 
               onClick={() => setShowPast(true)}
             >
               Rückblick
