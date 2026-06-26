@@ -739,6 +739,13 @@ function ResultsPage({ navigate }) {
 
   useEffect(() => {
     const responses = JSON.parse(localStorage.getItem("eventomat_responses") || "{}");
+
+    // No survey answers saved locally: send the user to onboarding first.
+    if (Object.keys(responses).length === 0) {
+      navigate("/eventomat");
+      return;
+    }
+
     const token = getOrCreateUserToken();
     getEventomatResults(token)
       .then((data) => {
@@ -750,6 +757,13 @@ function ResultsPage({ navigate }) {
         setLoading(false);
       })
       .catch((err) => {
+        // 404 means there are no saved responses for this token (e.g. stale
+        // localStorage but a reset DB) — route back to the survey instead of
+        // showing an error.
+        if (err.message.includes("404")) {
+          navigate("/eventomat");
+          return;
+        }
         setError(err.message);
         setLoading(false);
       });
@@ -1659,7 +1673,20 @@ function App() {
           setEvents(filtered);
           setError("");
         })
-        .catch((err) => setError(err.message));
+        .catch((err) => {
+          // 404 means this token has no saved survey responses yet — fall back
+          // to the unpersonalized event list instead of showing an error.
+          if (err.message.includes("404")) {
+            getEvents(filters)
+              .then((data) => {
+                setEvents(data);
+                setError("");
+              })
+              .catch((e) => setError(e.message));
+            return;
+          }
+          setError(err.message);
+        });
     } else {
       getEvents(filters)
         .then((data) => {
