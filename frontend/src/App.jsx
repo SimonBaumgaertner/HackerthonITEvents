@@ -534,7 +534,7 @@ function EventomatMap({ events, selectedEventId, onSelectEvent }) {
   );
 }
 
-function OnboardingPage({ navigate }) {
+function OnboardingPage({ navigate, isWidget }) {
   const [step, setStep] = useState(1);
   const [responses, setResponses] = useState(() => {
     const saved = localStorage.getItem("eventomat_responses");
@@ -575,7 +575,7 @@ function OnboardingPage({ navigate }) {
   const handleBack = () => {
     if (step > 1) {
       setStep(step - 1);
-    } else {
+    } else if (!isWidget) {
       navigate("/");
     }
   };
@@ -594,22 +594,26 @@ function OnboardingPage({ navigate }) {
   const progressPercent = (step / 5) * 100;
 
   return (
-    <div className="eventomat-flow-page">
-      <header className="eventomat-top-header">
-        <button className="eventomat-top-back-btn" onClick={() => navigate("/")}>
-          <Icon name="arrow-left" className="icon-sm" />
-          <span>Zurück</span>
-        </button>
-        <span className="eventomat-top-title">EVENTOMAT · IT-EVENTS FÜR DICH</span>
-      </header>
+    <div className={isWidget ? "eventomat-widget-wrapper" : "eventomat-flow-page"}>
+      {!isWidget && (
+        <header className="eventomat-top-header">
+          <button className="eventomat-top-back-btn" onClick={() => navigate("/")}>
+            <Icon name="arrow-left" className="icon-sm" />
+            <span>Zurück</span>
+          </button>
+          <span className="eventomat-top-title">EVENTOMAT · IT-EVENTS FÜR DICH</span>
+        </header>
+      )}
 
-      <div className="eventomat-content-container">
+      <div className={isWidget ? "eventomat-widget-content" : "eventomat-content-container"}>
         {/* Sticky Progress Bar */}
         <div className="eventomat-progress-bar-container">
-          <div className="eventomat-progress-text">
-            <span className="progress-step-indicator">FRAGE {step} VON 5</span>
-            <span className="progress-percentage">{Math.round(progressPercent)} %</span>
-          </div>
+          {!isWidget && (
+            <div className="eventomat-progress-text">
+              <span className="progress-step-indicator">FRAGE {step} VON 5</span>
+              <span className="progress-percentage">{Math.round(progressPercent)} %</span>
+            </div>
+          )}
           <div className="eventomat-progress-track">
             <div className="eventomat-progress-fill" style={{ width: `${progressPercent}%` }}></div>
           </div>
@@ -782,7 +786,11 @@ function OnboardingPage({ navigate }) {
 
           {/* Navigation controls */}
           <div className="eventomat-card-footer">
-            <button className="btn btn-secondary-back" onClick={handleBack}>
+            <button 
+              className="btn btn-secondary-back" 
+              onClick={handleBack}
+              style={{ visibility: (step === 1 && isWidget) ? 'hidden' : 'visible' }}
+            >
               <Icon name="arrow-left" className="icon-sm" />
               <span>Zurück</span>
             </button>
@@ -832,7 +840,7 @@ function ResultsPage({ navigate }) {
 
     // No survey answers saved locally: send the user to onboarding first.
     if (Object.keys(responses).length === 0) {
-      navigate("/eventomat");
+      navigate("/");
       return;
     }
 
@@ -851,7 +859,7 @@ function ResultsPage({ navigate }) {
         // localStorage but a reset DB) — route back to the survey instead of
         // showing an error.
         if (err.message.includes("404")) {
-          navigate("/eventomat");
+          navigate("/");
           return;
         }
         setError(err.message);
@@ -917,9 +925,9 @@ function ResultsPage({ navigate }) {
   return (
     <div className="eventomat-results-page">
       <header className="eventomat-top-header">
-        <button className="eventomat-top-back-btn" onClick={() => navigate("/eventomat")}>
+        <button className="eventomat-top-back-btn" onClick={() => navigate("/")}>
           <Icon name="arrow-left" className="icon-sm" />
-          <span>Zurück zum Eventomat</span>
+          <span>Zurück zu den Events</span>
         </button>
         <span className="eventomat-top-title">DEINE EMPFEHLUNGEN</span>
       </header>
@@ -1355,9 +1363,7 @@ function EventDetailPage({ navigate, eventId }) {
               href="#"
               onClick={(e) => {
                 e.preventDefault();
-                if (link === "Eventomat") {
-                  navigate("/eventomat");
-                } else if (link === "IT-Events") {
+                if (link === "IT-Events") {
                   navigate("/");
                 } else if (link === "Beispiel-Event") {
                   navigate("/event/1");
@@ -1560,13 +1566,6 @@ function LandingPage({ navigate, events, error, loadEvents }) {
               <small>VERBAND E.V.</small>
             </span>
           </a>
-          <div style={{ width: '1px', height: '32px', backgroundColor: 'var(--line)' }}></div>
-          <button 
-            className="btn btn-primary btn-eventomat-header" 
-            onClick={() => navigate("/eventomat")}
-          >
-            Zum Eventomat ↗
-          </button>
         </div>
 
         <nav className="nav-links">
@@ -1575,10 +1574,7 @@ function LandingPage({ navigate, events, error, loadEvents }) {
               key={link}
               href="#"
               onClick={(e) => {
-                if (link === "Eventomat") {
-                  e.preventDefault();
-                  navigate("/eventomat");
-                } else if (link === "IT-Events") {
+                if (link === "IT-Events") {
                   e.preventDefault();
                   navigate("/");
                 }
@@ -1602,7 +1598,9 @@ function LandingPage({ navigate, events, error, loadEvents }) {
         <section className="hero-grid">
           <HighlightCard event={highlight} navigate={navigate} small={true} />
 
-          <MapPlaceholder count={searchLower ? gridEvents.length : baseEvents.length} />
+          <div className="hero-eventomat-container">
+            <OnboardingPage navigate={navigate} isWidget={true} />
+          </div>
         </section>
 
         <div className="events-controls" id="events-section">
@@ -1791,9 +1789,6 @@ function App() {
     window.scrollTo(0, 0);
   };
 
-  if (currentPath === "/eventomat") {
-    return <OnboardingPage navigate={navigate} />;
-  }
 
   if (currentPath === "/eventomat/results") {
     return <ResultsPage navigate={navigate} />;
