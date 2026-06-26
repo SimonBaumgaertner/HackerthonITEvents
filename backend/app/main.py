@@ -225,6 +225,7 @@ async def get_results(user_token: str, session: Session = Depends(get_session)):
             "Calculation Rules:\n"
             "1. Topic & Format Alignment (Weight: 60%): Overlap between User Topics/Formats and Event Tags.\n"
             "2. Experience & Context Match (Weight: 40%): Semantically evaluate user experience level and freetext against event descriptions.\n"
+            "3. Make sure one has a really high score! at least 85%"
             "Return a single, valid JSON object matching the requested schema. No conversational prose, markdown, or text wrapping."
         )
 
