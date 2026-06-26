@@ -13,10 +13,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from sqlmodel import Session, select
+from sqlmodel import Session, delete, select
 
 from app.database import engine, init_db
 from app.models import Event, EventKategorie
+from enums import Kategorie
 
 
 # ───────────────────────────────────────────────
@@ -64,25 +65,21 @@ def _resolve_url(event: dict[str, Any]) -> str:
 
 
 def _extract_categories(event: dict[str, Any]) -> list[str]:
-    """Extrahiert bereinigte Kategorie-Tags aus dem Event."""
+    """
+    Extrahiert Kategorien aus dem Event.
+    Verwendet ausschließlich das 'categories'-Feld, das bereits im LLM-Extraction-Schritt
+    gegen die Kategorie-Enum (enums.py) validiert wurde. Fällt nicht auf tags/event_type zurück.
+    """
+    allowed = {k.value for k in Kategorie}
+
     categories: list[str] = []
 
-    tags = event.get("tags", [])
-    if isinstance(tags, list):
-        for tag in tags:
-            t = _clean(tag)
-            if t and t not in categories:
-                categories.append(t)
-
-    # Event-Typ als zusätzliche Kategorie
-    event_type = _clean(event.get("event_type"))
-    if event_type and event_type not in categories:
-        categories.append(event_type)
-
-    # Format als zusätzliche Kategorie
-    fmt = _clean(event.get("format"))
-    if fmt and fmt not in categories:
-        categories.append(fmt)
+    raw_categories = event.get("categories", [])
+    if isinstance(raw_categories, list):
+        for cat in raw_categories:
+            c = _clean(cat)
+            if c and c in allowed and c not in categories:
+                categories.append(c)
 
     return categories
 
@@ -97,6 +94,16 @@ def _dedupe_key(event: dict[str, Any]) -> str:
 # ───────────────────────────────────────────────
 # IMPORT
 # ───────────────────────────────────────────────
+
+def clear_database() -> None:
+    """Löscht alle Events und Kategorien aus der Datenbank (frischer Start)."""
+    init_db()
+    with Session(engine) as session:
+        session.exec(delete(EventKategorie))
+        session.exec(delete(Event))
+        session.commit()
+    print("🗑️  Datenbank geleert (alle Events + Kategorien gelöscht).")
+
 
 def import_events(
     events: list[dict[str, Any]],
@@ -192,6 +199,10 @@ def main() -> None:
     args = parser.parse_args()
 
     events = load_events_from_json(Path(args.input))
+
+    # DB vor dem Import leeren, damit nur die neuen Daten dieser Pipeline übrig bleiben
+    clear_database()
+
     inserted, skipped = import_events(events, skip_existing=not args.no_dedupe)
 
     print(f"✅ Import abgeschlossen: {inserted} eingefügt, {skipped} übersprungen")

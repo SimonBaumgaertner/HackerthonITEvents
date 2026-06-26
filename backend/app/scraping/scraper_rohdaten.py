@@ -589,12 +589,13 @@ def run_pipeline(
     if import_to_db:
         from pathlib import Path
 
-        from app.scraping.sqlite_import import import_events, load_events_from_json
+        from app.scraping.sqlite_import import clear_database, import_events, load_events_from_json
 
         if not os.path.exists(output_file):
             print(f"⚠️  {output_file} nicht gefunden — überspringe DB-Import.")
         else:
             events = load_events_from_json(Path(output_file))
+            clear_database()
             inserted, skipped = import_events(events)
             print(f"📦 DB-Import: {inserted} eingefügt, {skipped} übersprungen")
 
@@ -619,9 +620,10 @@ if __name__ == "__main__":
     if args.import_only:
         from pathlib import Path
 
-        from app.scraping.sqlite_import import import_events, load_events_from_json
+        from app.scraping.sqlite_import import clear_database, import_events, load_events_from_json
 
         events = load_events_from_json(Path(args.output))
+        clear_database()
         inserted, skipped = import_events(events)
         print(f"📦 DB-Import: {inserted} eingefügt, {skipped} übersprungen")
     else:
