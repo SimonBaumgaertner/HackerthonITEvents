@@ -59,44 +59,85 @@ function DateBadge({ date }) {
   );
 }
 
-function HighlightCard({ event, navigate }) {
+function CountdownTimer({ targetDate }) {
+  const calculateTimeLeft = () => {
+    if (!targetDate) return {};
+    const difference = new Date(targetDate) - new Date();
+    let timeLeft = {};
+    if (difference > 0) {
+      timeLeft = {
+        Tage: Math.floor(difference / (1000 * 60 * 60 * 24)),
+        Stunden: Math.floor((difference / (1000 * 60 * 60)) % 24),
+        Minuten: Math.floor((difference / 1000 / 60) % 60),
+        Sekunden: Math.floor((difference / 1000) % 60)
+      };
+    }
+    return timeLeft;
+  };
+
+  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(calculateTimeLeft());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [targetDate]);
+
+  if (!Object.keys(timeLeft).length) {
+    return <div className="countdown-timer-finished">Event hat bereits begonnen!</div>;
+  }
+
+  return (
+    <div className="countdown-timer">
+      {Object.entries(timeLeft).map(([unit, value]) => (
+        <div key={unit} className="countdown-item">
+          <span className="countdown-value">{String(value).padStart(2, '0')}</span>
+          <span className="countdown-unit">{unit}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function HighlightCard({ event, navigate, small }) {
   const start = parseDate(event?.start);
   const end = parseDate(event?.end);
 
   return (
-    <article className="highlight-card">
+    <article className={`highlight-card ${small ? "small" : ""}`}>
       <div className="highlight-top">
         <DateBadge date={start} />
         <div className="highlight-heading">
           <span className="highlight-tag">✦ HIGHLIGHT EVENT</span>
-          <h2 
-            style={event ? { cursor: "pointer" } : {}} 
-            onClick={() => event && navigate(`/event/${event.id}`)}
-          >
-            {event ? event.name : "Noch keine Events"}
+          <h2>
+            {event ? event.name : "Wird geladen..."}
           </h2>
-          <p className="highlight-location-eyebrow">
-            {event ? event.location : "—"}
-          </p>
         </div>
       </div>
 
-      <p className="highlight-description">
-        {event
-          ? event.description
-          : "Sobald Events verfügbar sind, erscheint hier das Highlight."}
-      </p>
+      <div className="highlight-content">
+        <p className="highlight-description">
+          {event ? event.description : ""}
+        </p>
+        {event && (
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              navigate(`/event/${event.id}`);
+            }}
+            className="highlight-details-link"
+          >
+            Details zum Event ↗
+          </a>
+        )}
+      </div>
 
       <ul className="highlight-meta">
         <li>
           <span className="meta-icon" aria-hidden="true">
-            📅
-          </span>
-          {formatDateRange(start)}
-        </li>
-        <li>
-          <span className="meta-icon" aria-hidden="true">
-            🕘
+            🕒
           </span>
           {formatTimeRange(start, end)}
         </li>
@@ -118,17 +159,11 @@ function HighlightCard({ event, navigate }) {
         </div>
       )}
 
-      <div className="highlight-actions">
-        <button
-          className="btn btn-primary"
-          onClick={() => event && navigate(`/event/${event.id}`)}
-        >
-          Details anzeigen ↗
-        </button>
-        <button className="btn btn-ghost" onClick={() => navigate("/eventomat")}>
-          Zum Eventomat
-        </button>
-      </div>
+      {event?.start && (
+        <div className="highlight-countdown-wrapper" style={{ marginTop: '0.5rem' }}>
+          <CountdownTimer targetDate={event.start} />
+        </div>
+      )}
     </article>
   );
 }
@@ -1453,21 +1488,24 @@ function LandingPage({ navigate, events, error, loadEvents }) {
 
   return (
     <div className="landing">
-      <div className="announce">
-        <span>
-          ✦ Du suchst Events für dich? Nutze den <strong>Eventomat!</strong>
-        </span>
-        <button className="announce-link-btn" onClick={() => navigate("/eventomat")}>ÖFFNEN ↗</button>
-      </div>
+
 
       <header className="navbar">
-        <a className="brand" href="#" onClick={(e) => { e.preventDefault(); navigate("/"); }}>
-          <span className="brand-logo">IT</span>
-          <span className="brand-text">
-            <strong>IT · MAINFRANKEN</strong>
-            <small>VERBAND E.V.</small>
-          </span>
-        </a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+          <a className="brand" href="#" onClick={(e) => { e.preventDefault(); navigate("/"); }}>
+            <span className="brand-logo">IT</span>
+            <span className="brand-text">
+              <strong>IT · MAINFRANKEN</strong>
+              <small>VERBAND E.V.</small>
+            </span>
+          </a>
+          <button 
+            className="btn btn-primary btn-eventomat-header" 
+            onClick={() => navigate("/eventomat")}
+          >
+            Zum Eventomat (Anmeldung) ↗
+          </button>
+        </div>
 
         <nav className="nav-links">
           {NAV_LINKS.map((link) => (
@@ -1500,30 +1538,11 @@ function LandingPage({ navigate, events, error, loadEvents }) {
       </header>
 
       <main className="hero">
-        <div className="hero-head">
-          <h1>MAINFRANKEN IT-EVENTS PORTAL</h1>
-          <div className="hero-buttons">
-            <button 
-              className="btn btn-secondary btn-lg" 
-              onClick={() => {
-                document.getElementById('events-section')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-            >
-              Zu Events ↓
-            </button>
-            <button 
-              className="btn btn-primary btn-lg" 
-              onClick={() => navigate("/eventomat")}
-            >
-              Zum Eventomat (Anmeldung) ↗
-            </button>
-          </div>
-        </div>
-
         {error && <p className="error">{error}</p>}
 
         <section className="hero-grid">
-          <HighlightCard event={highlight} navigate={navigate} />
+          <HighlightCard event={highlight} navigate={navigate} small={true} />
+
           <MapPlaceholder count={searchLower ? gridEvents.length : baseEvents.length} />
         </section>
 
