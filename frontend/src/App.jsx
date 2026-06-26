@@ -1525,7 +1525,9 @@ function LandingPage({ navigate, events, error, loadEvents }) {
     .sort((a, b) => parseDate(b.start) - parseDate(a.start));
 
   const baseEvents = showPast ? basePast : baseUpcoming;
-  const highlight = baseEvents[0];
+  const highlight =
+    baseEvents.find((e) => e.name === "Abschlusspitches Innovation Challenge") ||
+    baseEvents[0];
 
   const gridEvents = baseEvents.filter((e) => {
     if (searchLower && !e.name.toLowerCase().includes(searchLower)) return false;
