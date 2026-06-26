@@ -5,6 +5,7 @@ class Kategorie(str, Enum):
     UI_UX = "UI/UX Design und Frontend"
     SOFTWARE = "Software Development"
     SECURITY = "IT und Security"
+    ITMANAGEMENT = "IT-Management und Networking"
     ANFAENGER = "Anfänger / Einsteiger"
     FORTGESCHRITTEN = "Fortgeschritten"
     EXPERTE = "Experte / Profi"

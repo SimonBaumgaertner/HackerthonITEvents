@@ -7,8 +7,6 @@ import "./App.css";
 const NAV_LINKS = [
   "IT-Verband",
   "IT-Events",
-  "Eventomat",
-  "Beispiel-Event",
   "Kontakt",
 ];
 
@@ -34,7 +32,14 @@ function formatDateRange(start) {
 }
 
 function formatTimeRange(start, end) {
-  if (!start || !end) return "Uhrzeit folgt";
+  if (!start) return "Uhrzeit folgt";
+  if (!end) return `${TIME.format(start)} Uhr`;
+
+  const diffMinutes = (end - start) / (1000 * 60);
+  if (diffMinutes < 15) {
+    return `${TIME.format(start)} Uhr`;
+  }
+
   return `${TIME.format(start)} – ${TIME.format(end)} Uhr`;
 }
 
@@ -59,44 +64,135 @@ function DateBadge({ date }) {
   );
 }
 
-function HighlightCard({ event, navigate }) {
+function MultiSelectDropdown({ label, options, selectedOptions, onChange }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const toggleOption = (option) => {
+    if (selectedOptions.includes(option)) {
+      onChange(selectedOptions.filter((o) => o !== option));
+    } else {
+      onChange([...selectedOptions, option]);
+    }
+  };
+
+  const displayText = selectedOptions.length === 0 
+    ? `${label} (Alle)` 
+    : `${selectedOptions.length} ausgewählt`;
+
+  return (
+    <div className="multi-select-dropdown" ref={dropdownRef}>
+      <div className="multi-select-toggle" onClick={() => setIsOpen(!isOpen)}>
+        {displayText}
+        <span className="multi-select-arrow">{isOpen ? "▲" : "▼"}</span>
+      </div>
+      {isOpen && (
+        <div className="multi-select-menu">
+          {options.map((option) => (
+            <label key={option} className="multi-select-option">
+              <input
+                type="checkbox"
+                checked={selectedOptions.includes(option)}
+                onChange={() => toggleOption(option)}
+              />
+              <span className="multi-select-label">{option}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CountdownTimer({ targetDate }) {
+  const calculateTimeLeft = () => {
+    if (!targetDate) return {};
+    const difference = new Date(targetDate) - new Date();
+    let timeLeft = {};
+    if (difference > 0) {
+      timeLeft = {
+        Tage: Math.floor(difference / (1000 * 60 * 60 * 24)),
+        Stunden: Math.floor((difference / (1000 * 60 * 60)) % 24),
+        Minuten: Math.floor((difference / 1000 / 60) % 60),
+        Sekunden: Math.floor((difference / 1000) % 60)
+      };
+    }
+    return timeLeft;
+  };
+
+  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(calculateTimeLeft());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [targetDate]);
+
+  if (!Object.keys(timeLeft).length) {
+    return <div className="countdown-timer-finished">Event hat bereits begonnen!</div>;
+  }
+
+  return (
+    <div className="countdown-timer">
+      {Object.entries(timeLeft).map(([unit, value]) => (
+        <div key={unit} className="countdown-item">
+          <span className="countdown-value">{String(value).padStart(2, '0')}</span>
+          <span className="countdown-unit">{unit}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function HighlightCard({ event, navigate, small }) {
   const start = parseDate(event?.start);
   const end = parseDate(event?.end);
 
   return (
-    <article className="highlight-card">
+    <article className={`highlight-card ${small ? "small" : ""}`}>
       <div className="highlight-top">
         <DateBadge date={start} />
         <div className="highlight-heading">
           <span className="highlight-tag">✦ HIGHLIGHT EVENT</span>
-          <h2 
-            style={event ? { cursor: "pointer" } : {}} 
-            onClick={() => event && navigate(`/event/${event.id}`)}
-          >
-            {event ? event.name : "Noch keine Events"}
+          <h2>
+            {event ? event.name : "Wird geladen..."}
           </h2>
-          <p className="highlight-location-eyebrow">
-            {event ? event.location : "—"}
-          </p>
         </div>
       </div>
 
-      <p className="highlight-description">
-        {event
-          ? event.description
-          : "Sobald Events verfügbar sind, erscheint hier das Highlight."}
-      </p>
+      <div className="highlight-content">
+        <p className="highlight-description">
+          {event ? event.description : ""}
+        </p>
+        {event && (
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              navigate(`/event/${event.id}`);
+            }}
+            className="highlight-details-link"
+          >
+            Details zum Event ↗
+          </a>
+        )}
+      </div>
 
       <ul className="highlight-meta">
         <li>
           <span className="meta-icon" aria-hidden="true">
-            📅
-          </span>
-          {formatDateRange(start)}
-        </li>
-        <li>
-          <span className="meta-icon" aria-hidden="true">
-            🕘
+            🕒
           </span>
           {formatTimeRange(start, end)}
         </li>
@@ -118,17 +214,11 @@ function HighlightCard({ event, navigate }) {
         </div>
       )}
 
-      <div className="highlight-actions">
-        <button
-          className="btn btn-primary"
-          onClick={() => event && navigate(`/event/${event.id}`)}
-        >
-          Details anzeigen ↗
-        </button>
-        <button className="btn btn-ghost" onClick={() => navigate("/eventomat")}>
-          Zum Eventomat
-        </button>
-      </div>
+      {event?.start && (
+        <div className="highlight-countdown-wrapper" style={{ marginTop: '0.5rem' }}>
+          <CountdownTimer targetDate={event.start} />
+        </div>
+      )}
     </article>
   );
 }
@@ -739,6 +829,13 @@ function ResultsPage({ navigate }) {
 
   useEffect(() => {
     const responses = JSON.parse(localStorage.getItem("eventomat_responses") || "{}");
+
+    // No survey answers saved locally: send the user to onboarding first.
+    if (Object.keys(responses).length === 0) {
+      navigate("/eventomat");
+      return;
+    }
+
     const token = getOrCreateUserToken();
     getEventomatResults(token)
       .then((data) => {
@@ -750,6 +847,13 @@ function ResultsPage({ navigate }) {
         setLoading(false);
       })
       .catch((err) => {
+        // 404 means there are no saved responses for this token (e.g. stale
+        // localStorage but a reset DB) — route back to the survey instead of
+        // showing an error.
+        if (err.message.includes("404")) {
+          navigate("/eventomat");
+          return;
+        }
         setError(err.message);
         setLoading(false);
       });
@@ -1387,9 +1491,9 @@ function LandingPage({ navigate, events, error, loadEvents }) {
   const now = new Date();
   const [showPast, setShowPast] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterCategory, setFilterCategory] = useState("");
-  const [filterExperience, setFilterExperience] = useState("");
-  const [filterFormat, setFilterFormat] = useState("");
+  const [filterCategories, setFilterCategories] = useState([]);
+  const [filterExperience, setFilterExperience] = useState([]);
+  const [filterFormat, setFilterFormat] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 50;
 
@@ -1398,17 +1502,7 @@ function LandingPage({ navigate, events, error, loadEvents }) {
   // Reset page to 1 when any filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, showPast, filterCategory, filterExperience, filterFormat]);
-
-  useEffect(() => {
-    if (loadEvents) {
-      loadEvents({
-        category: filterCategory,
-        experience: filterExperience,
-        format: filterFormat
-      });
-    }
-  }, [filterCategory, filterExperience, filterFormat, loadEvents]);
+  }, [searchTerm, showPast, filterCategories, filterExperience, filterFormat]);
 
   const baseUpcoming = events
     .filter((e) => {
@@ -1427,9 +1521,25 @@ function LandingPage({ navigate, events, error, loadEvents }) {
   const baseEvents = showPast ? basePast : baseUpcoming;
   const highlight = baseEvents[0];
 
-  const gridEvents = searchLower
-    ? baseEvents.filter(e => e.name.toLowerCase().includes(searchLower))
-    : baseEvents.slice(1);
+  const gridEvents = baseEvents.filter((e) => {
+    if (searchLower && !e.name.toLowerCase().includes(searchLower)) return false;
+
+    const eCats = e.categories || [];
+
+    if (filterCategories.length > 0) {
+      if (!filterCategories.some((c) => eCats.includes(c))) return false;
+    }
+
+    if (filterExperience.length > 0) {
+      if (!filterExperience.some((c) => eCats.includes(c))) return false;
+    }
+
+    if (filterFormat.length > 0) {
+      if (!filterFormat.some((c) => eCats.includes(c))) return false;
+    }
+
+    return true;
+  });
 
   const totalPages = Math.ceil(gridEvents.length / ITEMS_PER_PAGE);
   const paginatedEvents = gridEvents.slice(
@@ -1439,21 +1549,25 @@ function LandingPage({ navigate, events, error, loadEvents }) {
 
   return (
     <div className="landing">
-      <div className="announce">
-        <span>
-          ✦ Du suchst Events für dich? Nutze den <strong>Eventomat!</strong>
-        </span>
-        <button className="announce-link-btn" onClick={() => navigate("/eventomat")}>ÖFFNEN ↗</button>
-      </div>
+
 
       <header className="navbar">
-        <a className="brand" href="#" onClick={(e) => { e.preventDefault(); navigate("/"); }}>
-          <span className="brand-logo">IT</span>
-          <span className="brand-text">
-            <strong>IT · MAINFRANKEN</strong>
-            <small>VERBAND E.V.</small>
-          </span>
-        </a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+          <a className="brand" href="#" onClick={(e) => { e.preventDefault(); navigate("/"); }}>
+            <span className="brand-logo">IT</span>
+            <span className="brand-text">
+              <strong>IT · MAINFRANKEN</strong>
+              <small>VERBAND E.V.</small>
+            </span>
+          </a>
+          <div style={{ width: '1px', height: '32px', backgroundColor: 'var(--line)' }}></div>
+          <button 
+            className="btn btn-primary btn-eventomat-header" 
+            onClick={() => navigate("/eventomat")}
+          >
+            Zum Eventomat ↗
+          </button>
+        </div>
 
         <nav className="nav-links">
           {NAV_LINKS.map((link) => (
@@ -1476,9 +1590,6 @@ function LandingPage({ navigate, events, error, loadEvents }) {
         </nav>
 
         <div className="nav-actions">
-          <a className="btn btn-primary" href="#join">
-            Mitglied werden
-          </a>
           <a className="nav-linkedin" href="#linkedin" aria-label="LinkedIn">
             in
           </a>
@@ -1486,30 +1597,11 @@ function LandingPage({ navigate, events, error, loadEvents }) {
       </header>
 
       <main className="hero">
-        <div className="hero-head">
-          <h1>MAINFRANKEN IT-EVENTS PORTAL</h1>
-          <div className="hero-buttons">
-            <button 
-              className="btn btn-secondary btn-lg" 
-              onClick={() => {
-                document.getElementById('events-section')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-            >
-              Zu Events ↓
-            </button>
-            <button 
-              className="btn btn-primary btn-lg" 
-              onClick={() => navigate("/eventomat")}
-            >
-              Zum Eventomat (Anmeldung) ↗
-            </button>
-          </div>
-        </div>
-
         {error && <p className="error">{error}</p>}
 
         <section className="hero-grid">
-          <HighlightCard event={highlight} navigate={navigate} />
+          <HighlightCard event={highlight} navigate={navigate} small={true} />
+
           <MapPlaceholder count={searchLower ? gridEvents.length : baseEvents.length} />
         </section>
 
@@ -1524,24 +1616,24 @@ function LandingPage({ navigate, events, error, loadEvents }) {
               />
             </div>
             <div className="pill-filters">
-              <select className="pill-select" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-                <option value="">Kategorie (Alle)</option>
-                {KATEGORIEN.map(kat => (
-                  <option key={kat} value={kat}>{kat}</option>
-                ))}
-              </select>
-              <select className="pill-select" value={filterExperience} onChange={(e) => setFilterExperience(e.target.value)}>
-                <option value="">Empfohlen für (Alle)</option>
-                {ERFAHRUNGSLEVEL.map(erf => (
-                  <option key={erf} value={erf}>{erf}</option>
-                ))}
-              </select>
-              <select className="pill-select" value={filterFormat} onChange={(e) => setFilterFormat(e.target.value)}>
-                <option value="">Format (Alle)</option>
-                {FORMATE.map(fmt => (
-                  <option key={fmt} value={fmt}>{fmt}</option>
-                ))}
-              </select>
+              <MultiSelectDropdown 
+                label="Kategorie" 
+                options={KATEGORIEN} 
+                selectedOptions={filterCategories} 
+                onChange={setFilterCategories} 
+              />
+              <MultiSelectDropdown 
+                label="Empfohlen für" 
+                options={ERFAHRUNGSLEVEL} 
+                selectedOptions={filterExperience} 
+                onChange={setFilterExperience} 
+              />
+              <MultiSelectDropdown 
+                label="Format" 
+                options={FORMATE} 
+                selectedOptions={filterFormat} 
+                onChange={setFilterFormat} 
+              />
             </div>
           </div>
           <div className="filter-toggle">
@@ -1659,7 +1751,20 @@ function App() {
           setEvents(filtered);
           setError("");
         })
-        .catch((err) => setError(err.message));
+        .catch((err) => {
+          // 404 means this token has no saved survey responses yet — fall back
+          // to the unpersonalized event list instead of showing an error.
+          if (err.message.includes("404")) {
+            getEvents(filters)
+              .then((data) => {
+                setEvents(data);
+                setError("");
+              })
+              .catch((e) => setError(e.message));
+            return;
+          }
+          setError(err.message);
+        });
     } else {
       getEvents(filters)
         .then((data) => {
