@@ -7,8 +7,6 @@ import "./App.css";
 const NAV_LINKS = [
   "IT-Verband",
   "IT-Events",
-  "Eventomat",
-  "Beispiel-Event",
   "Kontakt",
 ];
 
@@ -34,7 +32,14 @@ function formatDateRange(start) {
 }
 
 function formatTimeRange(start, end) {
-  if (!start || !end) return "Uhrzeit folgt";
+  if (!start) return "Uhrzeit folgt";
+  if (!end) return `${TIME.format(start)} Uhr`;
+
+  const diffMinutes = (end - start) / (1000 * 60);
+  if (diffMinutes < 15) {
+    return `${TIME.format(start)} Uhr`;
+  }
+
   return `${TIME.format(start)} – ${TIME.format(end)} Uhr`;
 }
 
@@ -1491,7 +1496,7 @@ function LandingPage({ navigate, events, error, loadEvents }) {
 
 
       <header className="navbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
           <a className="brand" href="#" onClick={(e) => { e.preventDefault(); navigate("/"); }}>
             <span className="brand-logo">IT</span>
             <span className="brand-text">
@@ -1499,11 +1504,12 @@ function LandingPage({ navigate, events, error, loadEvents }) {
               <small>VERBAND E.V.</small>
             </span>
           </a>
+          <div style={{ width: '1px', height: '32px', backgroundColor: 'var(--line)' }}></div>
           <button 
             className="btn btn-primary btn-eventomat-header" 
             onClick={() => navigate("/eventomat")}
           >
-            Zum Eventomat (Anmeldung) ↗
+            Zum Eventomat ↗
           </button>
         </div>
 
@@ -1528,9 +1534,6 @@ function LandingPage({ navigate, events, error, loadEvents }) {
         </nav>
 
         <div className="nav-actions">
-          <a className="btn btn-primary" href="#join">
-            Mitglied werden
-          </a>
           <a className="nav-linkedin" href="#linkedin" aria-label="LinkedIn">
             in
           </a>

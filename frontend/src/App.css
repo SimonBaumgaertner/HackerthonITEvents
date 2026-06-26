@@ -85,8 +85,7 @@
 
 .nav-links {
   display: flex;
-  gap: 1.6rem;
-  margin-left: auto;
+  gap: 2.5rem;
 }
 
 .nav-links a {
