@@ -1,0 +1,202 @@
+Traceback (most recent call last):
+  File [35m"<frozen runpy>"[0m, line [35m198[0m, in [35m_run_module_as_main[0m
+  File [35m"<frozen runpy>"[0m, line [35m88[0m, in [35m_run_code[0m
+  File [35m"/Users/niklastrost/HackerthonITEvents/backend/app/scraping/scraper_rohdaten.py"[0m, line [35m630[0m, in [35m<module>[0m
+    [31mrun_pipeline[0m[1;31m([0m
+    [31m~~~~~~~~~~~~[0m[1;31m^[0m
+        [1;31mscrape=not args.llm_only,[0m
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+    ...<3 lines>...
+        [1;31moutput_file=args.output,[0m
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+    [1;31m)[0m
+    [1;31m^[0m
+  File [35m"/Users/niklastrost/HackerthonITEvents/backend/app/scraping/scraper_rohdaten.py"[0m, line [35m586[0m, in [35mrun_pipeline[0m
+    formatted_data = format_all_with_llm(raw_data)
+  File [35m"/Users/niklastrost/HackerthonITEvents/backend/app/scraping/llm_extract.py"[0m, line [35m411[0m, in [35mformat_all_with_llm[0m
+    extracted = extract_events_from_source(source_data, llm_client=llm_client)
+  File [35m"/Users/niklastrost/HackerthonITEvents/backend/app/scraping/llm_extract.py"[0m, line [35m343[0m, in [35mextract_events_from_source[0m
+    parsed = parse_json_response(raw_response)
+  File [35m"/Users/niklastrost/HackerthonITEvents/backend/app/scraping/llm_extract.py"[0m, line [35m50[0m, in [35mparse_json_response[0m
+    text = [1;31mtext.strip[0m()
+           [1;31m^^^^^^^^^^[0m
+[1;35mAttributeError[0m: [35m'NoneType' object has no attribute 'strip'[0m
+
+======================================================================
+MAINFRANKEN EVENT SCRAPER — ROHDATEN-MODUS
+======================================================================
+
+[FETCH] ZDI Mainfranken — https://www.zdi-mainfranken.de/events/
+  [OK] 1 Seite(n), 3,092 Zeichen Text, 2 Blöcke, Methoden: requests
+[FETCH] THWS Termine — https://www.thws.de/termine/
+  [OK] 1 Seite(n), 12,268 Zeichen Text, 21 Blöcke, Methoden: requests
+[FETCH] THWS CAIRO News — https://www.thws.de/forschung/institute/cairothws/news/
+  [OK] 1 Seite(n), 19,289 Zeichen Text, 83 Blöcke, Methoden: requests
+[FETCH] THWS Studieninteressierte — https://www.thws.de/studieninteressierte/veranstaltungen/
+  [OK] 1 Seite(n), 6,792 Zeichen Text, 8 Blöcke, Methoden: requests
+[FETCH] MetaComp IT-Veranstaltungen — https://www.metacomp-wuerzburg.de/newsroom/it-veranstaltungen/
+  [OK] 1 Seite(n), 1,617 Zeichen Text, 5 Blöcke, Methoden: requests
+[FETCH] KI-Regio — https://ki-regio.de/veranstaltungen/
+  [OK] 1 Seite(n), 10,198 Zeichen Text, 26 Blöcke, Methoden: requests
+[FETCH] Uni Würzburg Informatik — https://www.informatik.uni-wuerzburg.de/aktuelles/veranstaltungen-und-termine/
+  [JS-FALLBACK] Wenig Text bei großem HTML → Playwright
+  [WARN] Playwright-Fallback fehlgeschlagen: Playwright nicht installiert (pip install playwright && playwright install chromium)
+  [OK] 1 Seite(n), 641 Zeichen Text, 4 Blöcke, Methoden: requests
+[FETCH] Gründen@Würzburg — https://gruenden.wuerzburg.de/
+  [OK] 1 Seite(n), 4,699 Zeichen Text, 6 Blöcke, Methoden: requests
+[FETCH] IHK Würzburg — https://www.wuerzburg.ihk.de/veranstaltungen/
+  [JS-FALLBACK] Wenig Text bei großem HTML → Playwright
+  [WARN] Playwright-Fallback fehlgeschlagen: Playwright nicht installiert (pip install playwright && playwright install chromium)
+  [OK] 1 Seite(n), 431 Zeichen Text, 1 Blöcke, Methoden: requests
+[FETCH] HWK Unterfranken — https://www.hwk-ufr.de/artikel/aktuelle-veranstaltungen-webinare-und-workshops-78,0,6052.html
+  [OK] 1 Seite(n), 5,985 Zeichen Text, 1 Blöcke, Methoden: requests
+[FETCH] Startbahn27 — https://startbahn27.de/en/news-events
+  [OK] 1 Seite(n), 3,426 Zeichen Text, 11 Blöcke, Methoden: requests
+[FETCH] Uni Würzburg Allgemein — https://www.uni-wuerzburg.de/aktuelles/veranstaltungen/
+  [OK] 1 Seite(n), 3,695 Zeichen Text, 30 Blöcke, Methoden: requests
+[FETCH] WueWW — https://www.wueww.de/
+  [JS-FALLBACK] Wenig Text bei großem HTML → Playwright
+  [WARN] Playwright-Fallback fehlgeschlagen: Playwright nicht installiert (pip install playwright && playwright install chromium)
+  [OK] 1 Seite(n), 265 Zeichen Text, 1 Blöcke, Methoden: requests
+[FETCH] VDE Bayern — https://www.vde-bayern.de/de/veranstaltungen
+  [JS-FALLBACK] Wenig Text bei großem HTML → Playwright
+  [WARN] Playwright-Fallback fehlgeschlagen: Playwright nicht installiert (pip install playwright && playwright install chromium)
+  [OK] 1 Seite(n), 499 Zeichen Text, 1 Blöcke, Methoden: requests
+[FETCH] Hackation — https://hackation.de/de/
+  [OK] 1 Seite(n), 4,582 Zeichen Text, 5 Blöcke, Methoden: requests
+
+======================================================================
+ERGEBNIS: 15/15 Quellen erfolgreich
+======================================================================
+
+✅ Rohdaten gespeichert: events_raw.json (2.6 MB)
+
+📊 ZUSAMMENFASSUNG:
+
+✅ ZDI Mainfranken
+   URL: https://www.zdi-mainfranken.de/events/
+   Status: 200
+   Seiten: 1, Text: 3,092 Zeichen, Blöcke: 2
+   Methoden: requests
+   Titel: Events – ZDI – Zentrum für digitale Innovationen Mainfranken
+   Preview: Events Veranstaltungen der Gründerzentren in Würzburg Sei dabei! Events Veranstaltungen der Gründerzentren in Würzburg Sei dabei! Best Events Ob kreative Ideenflüge, packende Innovation Challenges ode...
+
+✅ THWS Termine
+   URL: https://www.thws.de/termine/
+   Status: 200
+   Seiten: 1, Text: 12,268 Zeichen, Blöcke: 21
+   Methoden: requests
+   Titel: Termine :: Technische Hochschule Würzburg-Schweinfurt
+   Preview: Termine und Veranstaltungen Sie möchten einen Termin/eine Veranstaltung melden? Bitte füllen Sie hierzu im Intranet das entsprechende Formular unter "Termine melden" aus. Zum Akademischen Kalender der...
+
+✅ THWS CAIRO News
+   URL: https://www.thws.de/forschung/institute/cairothws/news/
+   Status: 200
+   Seiten: 1, Text: 19,289 Zeichen, Blöcke: 83
+   Methoden: requests
+   Titel: News :: Technische Hochschule Würzburg-Schweinfurt
+   Preview: Meldungen 29.04.2026 | thws.de , CAIRO Im Rahmen des DAAD-geförderten Projekts „Disinformation and AI Law“ (DAIL) begrüßte die Technische Hochschule Würzburg-Schweinfurt (THWS) Professorinnen und Prof...
+
+✅ THWS Studieninteressierte
+   URL: https://www.thws.de/studieninteressierte/veranstaltungen/
+   Status: 200
+   Seiten: 1, Text: 6,792 Zeichen, Blöcke: 8
+   Methoden: requests
+   Titel: Veranstaltungen :: Technische Hochschule Würzburg-Schweinfurt
+   Preview: Termine und Veranstaltungen Jedes Jahr im März findet die Studieninfotage der THWS statt, bei der sich Studieninteressierte über die Bachelorstudiengänge an der THWS informieren können. Einen tieferen...
+
+✅ MetaComp IT-Veranstaltungen
+   URL: https://www.metacomp-wuerzburg.de/newsroom/it-veranstaltungen/
+   Status: 200
+   Seiten: 1, Text: 1,617 Zeichen, Blöcke: 5
+   Methoden: requests
+   Titel: IT-Veranstaltungen - mit Experten von TAKENET & unseren Partnern
+   Preview: Suche nach: Remote Support Willkommen zu unseren Veranstaltungen rund um die IT. Sie befinden sich hier: | Newsroom | IT-Veranstaltungen Wir begrüßen Sie zu unserer MetaComp Würzburg Veranstaltungsrei...
+
+✅ KI-Regio
+   URL: https://ki-regio.de/veranstaltungen/
+   Status: 200
+   Seiten: 1, Text: 10,198 Zeichen, Blöcke: 26
+   Methoden: requests
+   Titel: Veranstaltungen – KI-Regio
+   Preview: Veranstaltungen Unsere Veranstaltungen im Rahmen des KI-Regio Projekts umfassen praxisorientierte Workshops und inspirierende Keynotes, die den gezielten Einsatz von Künstlicher Intelligenz in Unterne...
+
+✅ Uni Würzburg Informatik
+   URL: https://www.informatik.uni-wuerzburg.de/aktuelles/veranstaltungen-und-termine/
+   Status: 200
+   Seiten: 1, Text: 641 Zeichen, Blöcke: 4
+   Methoden: requests
+   Titel: Veranstaltungen und Termine - Institut für Informatik
+   Preview: Jul 03 Graduiertenfeier 2026 Jul 08 Offenes Informatikkolloquium Warum Drucker Menschen so sehr hassen Christoph Brehm Jul 17 Projektpräsentation Studierende der Studiengänge Informatik (BA) und Infor...
+
+✅ Gründen@Würzburg
+   URL: https://gruenden.wuerzburg.de/
+   Status: 200
+   Seiten: 1, Text: 4,699 Zeichen, Blöcke: 6
+   Methoden: requests
+   Titel: Unterstützung für StartUps in Würzburg - Gründen@Würzburg
+   Preview: Gründen in Würzburg – Mit uns zum Erfolg Willkommen auf der Webseite der Initiative Gründen@Würzburg, der Plattform für Gründer*innen, Start-ups und gründungsinteressierte in Würzburg. Ob erste Geschä...
+
+✅ IHK Würzburg
+   URL: https://www.wuerzburg.ihk.de/veranstaltungen/
+   Status: 200
+   Seiten: 1, Text: 431 Zeichen, Blöcke: 1
+   Methoden: requests
+   Titel: Terminkalender: Kostenfreie Info-Veranstaltungen, Sprechtage, Beratungen, Webina
+   Preview: Beratungen, Sprechtage oder Webinare Mit unseren Webinaren und Beratungen informieren wie unsere Mitglieder über Möglichkeiten, unternehmerische Vorhaben mit ausgewählten Finanzierungs - und Förderpro...
+
+✅ HWK Unterfranken
+   URL: https://www.hwk-ufr.de/artikel/aktuelle-veranstaltungen-webinare-und-workshops-78,0,6052.html
+   Status: 200
+   Seiten: 1, Text: 5,985 Zeichen, Blöcke: 1
+   Methoden: requests
+   Titel: Aktuelle Veranstaltungen, Webinare und Workshops
+   Preview: Robert Kneschke/stock.adobe.com Online- und Präsenzveranstaltungen für Betriebe Aktuelle Veranstaltungen, Webinare und Workshops Die Handwerkskammer für Unterfranken bietet Webinare und Workshops zu v...
+
+✅ Startbahn27
+   URL: https://startbahn27.de/en/news-events
+   Status: 200
+   Seiten: 1, Text: 3,426 Zeichen, Blöcke: 11
+   Methoden: requests
+   Titel: News and Events in Schweinfurt
+   Preview: All news and events on your radar Stay up to date and find out exciting news from our network! Subscribe to our Startbahn27 Boardmagazin now and never miss any important news again! Boardmagazin Archi...
+
+✅ Uni Würzburg Allgemein
+   URL: https://www.uni-wuerzburg.de/aktuelles/veranstaltungen/
+   Status: 200
+   Seiten: 1, Text: 3,695 Zeichen, Blöcke: 30
+   Methoden: requests
+   Titel: Veranstaltungen - Universität Würzburg
+   Preview: Ausgezeichnet! 14 Würzburger Nobelpreisträger – geniale Köpfe, die die Welt veränderten Wanderausstellung 27.01.2026, 15:30 - 31.07.2026, 20:00 Uhr Kategorie: Ausstellung Ort: Verschiedene Standorte G...
+
+✅ WueWW
+   URL: https://www.wueww.de/
+   Status: 200
+   Seiten: 1, Text: 265 Zeichen, Blöcke: 1
+   Methoden: requests
+   Titel: Wuerzburg Web Week | Eine Woche rund um Digitalisierung & Innovation in Mainfran
+   Preview: 00 Tage 00 Stunden 00 Minuten 00 Sekunden Statt WueWW 2024 organiseren wir … vom 11. bis 15. November die AI Week Mainfranken . Mehr zu den Gründen, warum wir dieses Jahr die Wuerzburg Web Week pausie...
+
+✅ VDE Bayern
+   URL: https://www.vde-bayern.de/de/veranstaltungen
+   Status: 200
+   Seiten: 1, Text: 499 Zeichen, Blöcke: 1
+   Methoden: requests
+   Titel: Veranstaltungen
+   Preview: VDE Veranstaltungen Mehr erfahren Kontakt VDE Bayern e.V. News Mehr erfahren Anwendungsregel oder Norm gesucht? > VDE VERLAG Im Shop des VDE VERLAGs finden Sie Normen zur elektrotechnischen Sicherheit...
+
+✅ Hackation
+   URL: https://hackation.de/de/
+   Status: 200
+   Seiten: 1, Text: 4,582 Zeichen, Blöcke: 5
+   Methoden: requests
+   Titel: Hackation.de
+   Preview: Event AI Vibe Hackathon #4 25. – 26. Juni 2026 ZDI Ideenlabor, Würzburg Zwei Tage KI-Prototyping als Finale der AI Week Mainfranken. Menschen aus Unternehmen, Startups, Tech, Design und Community baue...
+
+
+======================================================================
+LLM-FORMATIERUNG via OpenRouter
+Modell: None
+======================================================================
+
+[LLM] ZDI Mainfranken (1 Chunk(s))

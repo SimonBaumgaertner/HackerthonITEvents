@@ -14,10 +14,16 @@ from typing import Any
 import requests
 
 from app.scraping.llm_client import BaseLLMClient, LLMMessage, build_default_llm_client
+from enums import Kategorie
 
 MAX_CHUNK_CHARS = 60_000
 ALLOWED_EVENT_TYPES = {"workshop", "vortrag", "netzwerken", "messe", "webinar", "hackathon", "sonstiges"}
 ALLOWED_FORMATS = {"online", "offline", "hybrid"}
+
+# Erlaubte Kategorien — ausschließlich die Werte aus der Kategorie-Enum (enums.py)
+ALLOWED_CATEGORIES: list[str] = [k.value for k in Kategorie]
+ALLOWED_CATEGORIES_SET: set[str] = set(ALLOWED_CATEGORIES)
+
 EVENT_SCHEMA_FIELDS = [
     "title",
     "description",
@@ -30,6 +36,7 @@ EVENT_SCHEMA_FIELDS = [
     "organizer",
     "event_type",
     "tags",
+    "categories",
     "registration_url",
     "source_url",
     "source_name",
@@ -38,8 +45,11 @@ EVENT_SCHEMA_FIELDS = [
 ]
 
 
-def parse_json_response(text: str) -> dict[str, Any]:
+def parse_json_response(text: str | None) -> dict[str, Any]:
     """Extrahiert JSON aus einer LLM-Antwort (auch aus Markdown-Codeblöcken)."""
+    if text is None:
+        raise ValueError("LLM-Antwort ist None (leere API-Antwort / Rate-Limit / Modell-Fehler)")
+
     text = text.strip()
     if not text:
         raise ValueError("Leere LLM-Antwort")
@@ -110,6 +120,7 @@ def _split_text(text: str, chunk_size: int) -> list[str]:
 def build_extraction_prompt(source_data: dict, content: str, chunk_index: int, chunk_total: int) -> str:
     """Erzeugt den Extraktions-Prompt für einen Content-Chunk."""
     chunk_info = f" (Teil {chunk_index}/{chunk_total})" if chunk_total > 1 else ""
+    categories_list_str = "\n".join(f"  - {c}" for c in ALLOWED_CATEGORIES)
 
     return f"""Du extrahierst strukturierte Veranstaltungsdaten aus gescrapten Rohdaten einer Website{chunk_info}.
 
@@ -138,6 +149,14 @@ WICHTIGE REGELN:
 - source_url muss die URL der Quellseite sein: {source_data['source_url']}
 - source_name muss der Name der Quelle sein: {source_data['source_name']}
 
+KATEGORIEN (sehr wichtig):
+- Das Feld "categories" muss ein Array von Strings sein.
+- Es dürfen AUSSCHLIESSLICH die folgenden Werte verwendet werden — keine anderen:
+{categories_list_str}
+- Wähle für jedes Event alle passenden Kategorien aus dieser Liste.
+- Wenn keine Kategorie passt, setze categories auf ein leeres Array [].
+- Erfinde keine eigenen Kategorien und verwende keine Synonyme.
+
 OUTPUT-SCHEMA:
 {{
   "events": [
@@ -153,6 +172,7 @@ OUTPUT-SCHEMA:
       "organizer": "string oder null",
       "event_type": "workshop|vortrag|netzwerken|messe|webinar|hackathon|sonstiges oder null",
       "tags": ["string"],
+      "categories": ["{ALLOWED_CATEGORIES[0]}", "{ALLOWED_CATEGORIES[1]}", ...],
       "registration_url": "string oder null",
       "source_url": "{source_data['source_url']}",
       "source_name": "{source_data['source_name']}",
@@ -209,6 +229,16 @@ def normalize_event(event: dict[str, Any], source_data: dict[str, Any]) -> dict[
         tags = []
     tags = [str(tag).strip() for tag in tags if str(tag).strip()]
 
+    # Kategorien validieren — nur Werte aus der Enum erlauben
+    raw_categories = event.get("categories", [])
+    if not isinstance(raw_categories, list):
+        raw_categories = []
+    categories: list[str] = []
+    for cat in raw_categories:
+        cat_clean = _clean_str(cat)
+        if cat_clean and cat_clean in ALLOWED_CATEGORIES_SET and cat_clean not in categories:
+            categories.append(cat_clean)
+
     is_free = event.get("is_free")
     if isinstance(is_free, str):
         lowered = is_free.strip().lower()
@@ -233,6 +263,7 @@ def normalize_event(event: dict[str, Any], source_data: dict[str, Any]) -> dict[
         "organizer": _clean_str(event.get("organizer")),
         "event_type": event_type,
         "tags": tags,
+        "categories": categories,
         "registration_url": _clean_str(event.get("registration_url")),
         "source_url": _clean_str(event.get("source_url")) or source_data["source_url"],
         "source_name": _clean_str(event.get("source_name")) or source_data["source_name"],
@@ -241,7 +272,10 @@ def normalize_event(event: dict[str, Any], source_data: dict[str, Any]) -> dict[
     }
 
     for field in EVENT_SCHEMA_FIELDS:
-        normalized.setdefault(field, None if field != "tags" else [])
+        if field in ("tags", "categories"):
+            normalized.setdefault(field, [])
+        else:
+            normalized.setdefault(field, None)
 
     return normalized
 
