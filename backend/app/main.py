@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 import json
 import os
 import httpx
+from datetime import datetime
 from dotenv import load_dotenv
 
 # Load OpenRouter API key and details from scraping module .env
@@ -187,8 +188,8 @@ async def get_results(user_token: str, session: Session = Depends(get_session)):
 
     user_profile = json.loads(user_resp.payload)
     
-    # Get all active events
-    events = session.exec(select(Event)).all()
+    # Get all active events in the future
+    events = session.exec(select(Event).where(Event.start >= datetime.now())).all()
     if not events:
         return []
 
