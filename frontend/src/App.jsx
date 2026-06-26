@@ -64,6 +64,56 @@ function DateBadge({ date }) {
   );
 }
 
+function MultiSelectDropdown({ label, options, selectedOptions, onChange }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const toggleOption = (option) => {
+    if (selectedOptions.includes(option)) {
+      onChange(selectedOptions.filter((o) => o !== option));
+    } else {
+      onChange([...selectedOptions, option]);
+    }
+  };
+
+  const displayText = selectedOptions.length === 0 
+    ? `${label} (Alle)` 
+    : `${selectedOptions.length} ausgewählt`;
+
+  return (
+    <div className="multi-select-dropdown" ref={dropdownRef}>
+      <div className="multi-select-toggle" onClick={() => setIsOpen(!isOpen)}>
+        {displayText}
+        <span className="multi-select-arrow">{isOpen ? "▲" : "▼"}</span>
+      </div>
+      {isOpen && (
+        <div className="multi-select-menu">
+          {options.map((option) => (
+            <label key={option} className="multi-select-option">
+              <input
+                type="checkbox"
+                checked={selectedOptions.includes(option)}
+                onChange={() => toggleOption(option)}
+              />
+              <span className="multi-select-label">{option}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CountdownTimer({ targetDate }) {
   const calculateTimeLeft = () => {
     if (!targetDate) return {};
@@ -1441,9 +1491,9 @@ function LandingPage({ navigate, events, error, loadEvents }) {
   const now = new Date();
   const [showPast, setShowPast] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterCategory, setFilterCategory] = useState("");
-  const [filterExperience, setFilterExperience] = useState("");
-  const [filterFormat, setFilterFormat] = useState("");
+  const [filterCategories, setFilterCategories] = useState([]);
+  const [filterExperience, setFilterExperience] = useState([]);
+  const [filterFormat, setFilterFormat] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 50;
 
@@ -1452,17 +1502,7 @@ function LandingPage({ navigate, events, error, loadEvents }) {
   // Reset page to 1 when any filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, showPast, filterCategory, filterExperience, filterFormat]);
-
-  useEffect(() => {
-    if (loadEvents) {
-      loadEvents({
-        category: filterCategory,
-        experience: filterExperience,
-        format: filterFormat
-      });
-    }
-  }, [filterCategory, filterExperience, filterFormat, loadEvents]);
+  }, [searchTerm, showPast, filterCategories, filterExperience, filterFormat]);
 
   const baseUpcoming = events
     .filter((e) => {
@@ -1481,9 +1521,25 @@ function LandingPage({ navigate, events, error, loadEvents }) {
   const baseEvents = showPast ? basePast : baseUpcoming;
   const highlight = baseEvents[0];
 
-  const gridEvents = searchLower
-    ? baseEvents.filter(e => e.name.toLowerCase().includes(searchLower))
-    : baseEvents.slice(1);
+  const gridEvents = baseEvents.filter((e) => {
+    if (searchLower && !e.name.toLowerCase().includes(searchLower)) return false;
+
+    const eCats = e.categories || [];
+
+    if (filterCategories.length > 0) {
+      if (!filterCategories.some((c) => eCats.includes(c))) return false;
+    }
+
+    if (filterExperience.length > 0) {
+      if (!filterExperience.some((c) => eCats.includes(c))) return false;
+    }
+
+    if (filterFormat.length > 0) {
+      if (!filterFormat.some((c) => eCats.includes(c))) return false;
+    }
+
+    return true;
+  });
 
   const totalPages = Math.ceil(gridEvents.length / ITEMS_PER_PAGE);
   const paginatedEvents = gridEvents.slice(
@@ -1560,24 +1616,24 @@ function LandingPage({ navigate, events, error, loadEvents }) {
               />
             </div>
             <div className="pill-filters">
-              <select className="pill-select" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-                <option value="">Kategorie (Alle)</option>
-                {KATEGORIEN.map(kat => (
-                  <option key={kat} value={kat}>{kat}</option>
-                ))}
-              </select>
-              <select className="pill-select" value={filterExperience} onChange={(e) => setFilterExperience(e.target.value)}>
-                <option value="">Empfohlen für (Alle)</option>
-                {ERFAHRUNGSLEVEL.map(erf => (
-                  <option key={erf} value={erf}>{erf}</option>
-                ))}
-              </select>
-              <select className="pill-select" value={filterFormat} onChange={(e) => setFilterFormat(e.target.value)}>
-                <option value="">Format (Alle)</option>
-                {FORMATE.map(fmt => (
-                  <option key={fmt} value={fmt}>{fmt}</option>
-                ))}
-              </select>
+              <MultiSelectDropdown 
+                label="Kategorie" 
+                options={KATEGORIEN} 
+                selectedOptions={filterCategories} 
+                onChange={setFilterCategories} 
+              />
+              <MultiSelectDropdown 
+                label="Empfohlen für" 
+                options={ERFAHRUNGSLEVEL} 
+                selectedOptions={filterExperience} 
+                onChange={setFilterExperience} 
+              />
+              <MultiSelectDropdown 
+                label="Format" 
+                options={FORMATE} 
+                selectedOptions={filterFormat} 
+                onChange={setFilterFormat} 
+              />
             </div>
           </div>
           <div className="filter-toggle">
